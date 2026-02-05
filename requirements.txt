@@ -1,0 +1,13 @@
+pydicom
+scikit-image
+scikit-learn
+matplotlib
+seaborn
+opencv-python
+pandas
+numpy
+pillow
+torch
+torchvision
+tqdm
+tensorboard
