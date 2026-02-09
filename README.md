@@ -47,6 +47,26 @@ DisenoDeInterfaz/
 	pip install -r requirements.txt
 	```
 
+### Descargar modelo entrenado (carpeta `models`)
+
+El modelo de IA entrenado no se sube a GitHub por tamaño (>100 MB por archivo).
+
+1. Descarga la carpeta `models` desde Google Drive:
+	- Enlace: https://drive.google.com/drive/folders/1FGNE-fo40H9GsfXLJ5kDjGT3_25ifG94?usp=sharing
+2. Copia la carpeta `models` descargada dentro de la raíz del proyecto, de forma que quede:
+	```
+	DisenoDeInterfaz/
+	├── models/
+	│   ├── best_model.pth
+	│   ├── checkpoint_epoch_10.pth (opcional)
+	│   ├── checkpoint_epoch_20.pth (opcional)
+	│   ├── checkpoint_epoch_30.pth (opcional)
+	│   └── training_history.png (opcional)
+	└── ... resto de archivos del proyecto
+	```
+
+Con esto, los scripts `entrenar.py`, `predecir.py`, la GUI (`main.py`) y la app web (`web_app.py`) encontrarán automáticamente `models/best_model.pth`.
+
 ## Uso rápido
 
 ### 1) Entrenar la IA (U‑Net)
