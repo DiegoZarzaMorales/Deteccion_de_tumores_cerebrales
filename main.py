@@ -1,10 +1,7 @@
-# ============================================================
-# DETECCION Y VISUALIZACION DE TUMORES CEREBRALES
-# Enfoque: Localizacion visual de regiones tumorales
-# Autores: Narvaez, Ochoa, Zarza
-# ============================================================
+"""Punto de entrada principal de la aplicación de escritorio."""
 
-from interfaz_visual import main
+from gui.interfaz_visual import main
+
 
 if __name__ == "__main__":
     main()

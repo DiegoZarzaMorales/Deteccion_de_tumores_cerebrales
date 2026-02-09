@@ -7,7 +7,7 @@ import cv2
 from skimage.filters import threshold_otsu, gaussian
 from skimage.morphology import remove_small_objects, label, binary_dilation, disk
 from skimage.measure import regionprops
-from config import PARAMETROS_DETECCION
+from core.config import PARAMETROS_DETECCION
 
 
 def detectar_tumor(img, return_mask=False):
@@ -32,7 +32,7 @@ def detectar_tumor(img, return_mask=False):
     # Umbral automático con Otsu
     try:
         threshold = threshold_otsu(img_smooth)
-    except:
+    except Exception:
         threshold = img_smooth.mean() + 0.75 * img_smooth.std()
 
     # Crear máscara binaria
@@ -79,16 +79,7 @@ def detectar_tumor(img, return_mask=False):
 
 
 def extraer_features(img, stats):
-    """
-    Extrae características de la imagen y del tumor detectado
-
-    Args:
-        img: Imagen de entrada
-        stats: Estadísticas del tumor
-
-    Returns:
-        dict: Diccionario con todas las características extraídas
-    """
+    """Extrae características de la imagen y del tumor detectado"""
     # Normalización
     img_norm = (img - img.min()) / (img.max() - img.min() + 1e-8)
 
@@ -117,5 +108,5 @@ def extraer_features(img, stats):
         "IntensidadTumor": intensidad_tumor,
         "CentroY": centro_y,
         "CentroX": centro_x,
-        "TotalPixels": img.size
+        "TotalPixels": img.size,
     }

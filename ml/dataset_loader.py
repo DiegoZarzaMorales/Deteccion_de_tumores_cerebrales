@@ -61,8 +61,7 @@ class BraTSDataset(Dataset):
         # Redimensionar
         img = cv2.resize(img, (self.size, self.size))
         
-        # Crear máscara (aquí usaremos detección automática como pseudo-label)
-        # En un dataset real, tendrías máscaras ground truth
+        # Crear máscara (pseudo-label basada en zona más brillante)
         mask = self._crear_mascara_automatica(img)
         
         # Convertir a tensores
@@ -76,15 +75,11 @@ class BraTSDataset(Dataset):
         return img, mask
     
     def _crear_mascara_automatica(self, img):
-        """
-        Crea una máscara automática usando umbralización
-        NOTA: En un proyecto real, deberías tener máscaras anotadas por expertos
-        """
+        """Crea una máscara automática usando brillo (top 2% y componente principal)."""
         # 1) Normalizar por seguridad
         img_norm = (img - img.min()) / (img.max() - img.min() + 1e-8)
 
         # 2) Tomar solo los píxeles más brillantes (ej. top 2%)
-        #    Esto refleja mejor que el tumor en T1wCE es la zona más brillante
         high_percentile = 0.98  # top 2%
         threshold = np.quantile(img_norm, high_percentile)
         mask = (img_norm >= threshold).astype(np.uint8)
@@ -107,18 +102,7 @@ class BraTSDataset(Dataset):
 
 
 def crear_dataloaders(root_dir, batch_size=4, train_split=0.8, num_workers=0):
-    """
-    Crea dataloaders para entrenamiento y validación
-    
-    Args:
-        root_dir: Directorio raíz de datos
-        batch_size: Tamaño del batch
-        train_split: Proporción de datos para entrenamiento
-        num_workers: Número de workers para carga
-        
-    Returns:
-        train_loader, val_loader
-    """
+    """Crea dataloaders para entrenamiento y validación"""
     # Transformaciones básicas
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(p=0.5),
@@ -160,11 +144,10 @@ def crear_dataloaders(root_dir, batch_size=4, train_split=0.8, num_workers=0):
 
 
 if __name__ == "__main__":
-    # Prueba
+    # Prueba rápida
     root = r"c:\Users\josez\Documents\DisenoDeInterfaz\brats_data\Base de datos Brats"
     train_loader, val_loader = crear_dataloaders(root, batch_size=2)
     
-    # Mostrar un batch
     imgs, masks = next(iter(train_loader))
     print(f"\nBatch shape:")
     print(f"  Images: {imgs.shape}")
