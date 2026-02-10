@@ -1,10 +1,17 @@
-"""Wrapper para lanzar el entrenamiento definido en ml.entrenar."""
+"""Wrapper para lanzar el entrenamiento definido en ml.entrenar.
+
+Asume que la base de datos está en la carpeta "brats_data/Base de datos Brats"
+en la raíz del proyecto.
+"""
+
+import os
 
 from ml.entrenar import entrenar
 
 
 if __name__ == "__main__":
-    ROOT_DIR = r"c:\Users\josez\Documents\DisenoDeInterfaz\brats_data\Base de datos Brats"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    ROOT_DIR = os.path.join(base_dir, "brats_data", "Base de datos Brats")
 
     entrenar(
         root_dir=ROOT_DIR,

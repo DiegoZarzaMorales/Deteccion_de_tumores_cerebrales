@@ -144,8 +144,12 @@ def crear_dataloaders(root_dir, batch_size=4, train_split=0.8, num_workers=0):
 
 
 if __name__ == "__main__":
-    # Prueba rápida
-    root = r"c:\Users\josez\Documents\DisenoDeInterfaz\brats_data\Base de datos Brats"
+    # Prueba rápida usando la carpeta brats_data relative al proyecto
+    import os
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    root = os.path.join(base_dir, "brats_data", "Base de datos Brats")
+
     train_loader, val_loader = crear_dataloaders(root, batch_size=2)
     
     imgs, masks = next(iter(train_loader))

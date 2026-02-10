@@ -261,7 +261,11 @@ def entrenar(
 
 
 if __name__ == "__main__":
-    ROOT_DIR = r"c:\Users\josez\Documents\DisenoDeInterfaz\brats_data\Base de datos Brats"
+    import os
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ROOT_DIR = os.path.join(base_dir, "brats_data", "Base de datos Brats")
+
     entrenar(
         root_dir=ROOT_DIR,
         num_epochs=30,
