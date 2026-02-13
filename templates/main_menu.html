@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Detección de Tumores Cerebrales</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <h1>Detección de Tumores Cerebrales</h1>
+    <p class="desc">Sube una imagen DICOM T1wCE o un ZIP con varias imágenes, y la IA marcará automáticamente la región tumoral.</p>
+
+    <form action="/predict" method="post" enctype="multipart/form-data">
+      <div class="upload-box">
+        <p>Selecciona archivo (.dcm o .zip):</p>
+        <input type="file" name="file" accept=".dcm,.zip" required />
+        <p class="note">• .dcm = una sola imagen T1wCE<br>• .zip = varias imágenes T1wCE</p>
+      </div>
+      <button type="submit">Analizar con IA</button>
+    </form>
+
+    {% if error %}
+      <div class="results">
+        <p style="color:#e84118;">Error: {{ error }}</p>
+      </div>
+    {% endif %}
+
+    {% if images %}
+      <div class="results">
+        <h2>Resultados</h2>
+        {% if summary %}
+          <div class="summary">
+            <strong>Resumen del estudio:</strong><br>
+            • Imágenes analizadas: {{ summary.num_images }}<br>
+            • Imágenes con tumor: {{ summary.num_with_tumor }}<br>
+            {% if summary.total_area_mm2 and summary.total_area_mm2 > 0 %}
+              • Volumen relativo estimado: {{ "%.1f" % summary.total_area_mm2 }} mm²·slice<br>
+            {% else %}
+              • Volumen relativo estimado: basado en área en píxeles (sin escala física completa)<br>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% for img in images %}
+          <div class="result-card">
+            <img src="{{ img.src }}" class="result-img" />
+            {% if img.area > 0 %}
+              <div class="tag tag-alert">TUMOR DETECTADO (área aprox. {{ img.area }} px)</div>
+              <div style="margin-top:4px; font-size:13px;">
+                {% if img.area_mm2 %}
+                  Tamaño estimado: {{ "%.1f" % img.area_mm2 }} mm².
+                {% endif %}
+                {% if img.side %}
+                  Localización aproximada: {{ img.side }}.
+                {% endif %}
+                {% if img.quality_warning %}
+                  <br><span style="color:#f5cd79;">Aviso de calidad: {{ img.quality_warning }}</span>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="tag tag-ok">SIN TUMOR CLARO</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

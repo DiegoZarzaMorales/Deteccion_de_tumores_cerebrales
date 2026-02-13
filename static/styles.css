@@ -1,0 +1,17 @@
+body { font-family: Arial, sans-serif; background: #1e272e; color: #ecf0f1; margin: 0; padding: 0; }
+.container { max-width: 900px; margin: 40px auto; background: #2f3640; padding: 20px 30px; border-radius: 8px; }
+h1 { text-align: center; margin-bottom: 10px; }
+p.desc { text-align: center; color: #dcdde1; }
+form { margin-top: 20px; text-align: center; }
+.upload-box { border: 2px dashed #718093; padding: 20px; border-radius: 8px; background: #353b48; }
+input[type=file] { color: #ecf0f1; margin-top: 10px; }
+button { margin-top: 15px; background: #00a8ff; border: none; color: white; padding: 10px 20px; font-size: 15px; border-radius: 4px; cursor: pointer; }
+button:hover { background: #0097e6; }
+.note { font-size: 13px; color: #dcdde1; margin-top: 8px; }
+.results { margin-top: 30px; }
+.summary { margin-bottom: 20px; padding: 12px 16px; background: #273c75; border-radius: 6px; font-size: 14px; }
+.result-card { margin-bottom: 24px; padding: 10px; background: #353b48; border-radius: 6px; }
+.result-img { max-width: 100%; border-radius: 4px; box-shadow: 0 0 10px rgba(0,0,0,0.6); }
+.tag { margin-top: 8px; font-weight: bold; padding: 4px 8px; display: inline-block; border-radius: 4px; font-size: 13px; }
+.tag-ok { background: #2ecc71; color: #ffffff; }
+.tag-alert { background: #e74c3c; color: #ffffff; }
