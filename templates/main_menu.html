@@ -1,68 +1,115 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Detección de Tumores Cerebrales</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
-<body>
-  <div class="container">
-    <h1>Detección de Tumores Cerebrales</h1>
-    <p class="desc">Sube una imagen DICOM T1wCE o un ZIP con varias imágenes, y la IA marcará automáticamente la región tumoral.</p>
+<body class="bg-body-tertiary">
+  <main class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-9">
+        <div class="card shadow-sm">
+          <div class="card-body p-4 p-md-5">
+            <h1 class="h3 mb-2 text-center">Detección de Tumores Cerebrales</h1>
+            <p class="text-secondary text-center mb-4">
+              Sube una imagen DICOM T1wCE o un ZIP con varias imágenes, y la IA marcará automáticamente la región tumoral.
+            </p>
 
-    <form action="/predict" method="post" enctype="multipart/form-data">
-      <div class="upload-box">
-        <p>Selecciona archivo (.dcm o .zip):</p>
-        <input type="file" name="file" accept=".dcm,.zip" required />
-        <p class="note">• .dcm = una sola imagen T1wCE<br>• .zip = varias imágenes T1wCE</p>
-      </div>
-      <button type="submit">Analizar con IA</button>
-    </form>
-
-    {% if error %}
-      <div class="results">
-        <p style="color:#e84118;">Error: {{ error }}</p>
-      </div>
-    {% endif %}
-
-    {% if images %}
-      <div class="results">
-        <h2>Resultados</h2>
-        {% if summary %}
-          <div class="summary">
-            <strong>Resumen del estudio:</strong><br>
-            • Imágenes analizadas: {{ summary.num_images }}<br>
-            • Imágenes con tumor: {{ summary.num_with_tumor }}<br>
-            {% if summary.total_area_mm2 and summary.total_area_mm2 > 0 %}
-              • Volumen relativo estimado: {{ "%.1f" % summary.total_area_mm2 }} mm²·slice<br>
-            {% else %}
-              • Volumen relativo estimado: basado en área en píxeles (sin escala física completa)<br>
-            {% endif %}
-          </div>
-        {% endif %}
-        {% for img in images %}
-          <div class="result-card">
-            <img src="{{ img.src }}" class="result-img" />
-            {% if img.area > 0 %}
-              <div class="tag tag-alert">TUMOR DETECTADO (área aprox. {{ img.area }} px)</div>
-              <div style="margin-top:4px; font-size:13px;">
-                {% if img.area_mm2 %}
-                  Tamaño estimado: {{ "%.1f" % img.area_mm2 }} mm².
-                {% endif %}
-                {% if img.side %}
-                  Localización aproximada: {{ img.side }}.
-                {% endif %}
-                {% if img.quality_warning %}
-                  <br><span style="color:#f5cd79;">Aviso de calidad: {{ img.quality_warning }}</span>
-                {% endif %}
+            <form action="/predict" method="post" enctype="multipart/form-data">
+              <div class="mb-3">
+                <label class="form-label">Selecciona archivo (.dcm o .zip)</label>
+                <input class="form-control" type="file" name="file" accept=".dcm,.zip" required />
+                <div class="form-text">
+                  • .dcm = una sola imagen T1wCE<br>
+                  • .zip = varias imágenes T1wCE
+                </div>
               </div>
-            {% else %}
-              <div class="tag tag-ok">SIN TUMOR CLARO</div>
+              <div class="d-grid">
+                <button class="btn btn-primary btn-lg" type="submit">Analizar con IA</button>
+              </div>
+            </form>
+
+            {% if error %}
+              <div class="alert alert-danger mt-4 mb-0" role="alert">
+                <strong>Error:</strong> {{ error }}
+              </div>
             {% endif %}
           </div>
-        {% endfor %}
+        </div>
+
+        {% if images %}
+          <section class="mt-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h2 class="h4 mb-0">Resultados</h2>
+            </div>
+
+            {% if summary %}
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="fw-semibold mb-2">Resumen del estudio</div>
+                  <div class="row g-2 small">
+                    <div class="col-12 col-sm-4">
+                      <span class="text-secondary">Imágenes analizadas:</span> {{ summary.num_images }}
+                    </div>
+                    <div class="col-12 col-sm-4">
+                      <span class="text-secondary">Imágenes con tumor:</span> {{ summary.num_with_tumor }}
+                    </div>
+                    <div class="col-12 col-sm-4">
+                      <span class="text-secondary">Volumen relativo:</span>
+                      {% if summary.total_area_mm2 and summary.total_area_mm2 > 0 %}
+                        {{ "%.1f" % summary.total_area_mm2 }} mm²·slice
+                      {% else %}
+                        basado en área en píxeles
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
+            <div class="row g-3">
+              {% for img in images %}
+                <div class="col-12">
+                  <div class="card overflow-hidden">
+                    <img src="{{ img.src }}" class="app-result-img" alt="Predicción IA" />
+                    <div class="card-body">
+                      {% if img.area > 0 %}
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                          <span class="badge text-bg-danger">Tumor detectado</span>
+                          <span class="small text-secondary">Área aprox. {{ img.area }} px</span>
+                        </div>
+
+                        <div class="mt-2 small">
+                          {% if img.area_mm2 %}
+                            <div><span class="text-secondary">Tamaño estimado:</span> {{ "%.1f" % img.area_mm2 }} mm²</div>
+                          {% endif %}
+                          {% if img.side %}
+                            <div><span class="text-secondary">Localización aproximada:</span> {{ img.side }}</div>
+                          {% endif %}
+                        </div>
+
+                        {% if img.quality_warning %}
+                          <div class="alert alert-warning py-2 px-3 mt-3 mb-0 small" role="alert">
+                            <strong>Aviso de calidad:</strong> {{ img.quality_warning }}
+                          </div>
+                        {% endif %}
+                      {% else %}
+                        <span class="badge text-bg-success">Sin tumor claro</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
       </div>
-    {% endif %}
-  </div>
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 </body>
 </html>
