@@ -20,6 +20,13 @@
 
             <form action="/predict" method="post" enctype="multipart/form-data">
               <div class="mb-3">
+                <label class="form-label">Modelo de IA</label>
+                <select class="form-select" name="model_type">
+                  <option value="unet" {% if selected_model == 'unet' %}selected{% endif %}>U-Net (segmentación actual)</option>
+                  <option value="yolo26" {% if selected_model == 'yolo26' %}selected{% endif %}>YOLO26 (detección/segmentación)</option>
+                </select>
+              </div>
+              <div class="mb-3">
                 <label class="form-label">Selecciona archivo (.dcm o .zip)</label>
                 <input class="form-control" type="file" name="file" accept=".dcm,.zip" required />
                 <div class="form-text">
@@ -51,13 +58,21 @@
                 <div class="card-body">
                   <div class="fw-semibold mb-2">Resumen del estudio</div>
                   <div class="row g-2 small">
-                    <div class="col-12 col-sm-4">
+                    <div class="col-12 col-sm-3">
+                      <span class="text-secondary">Modelo:</span>
+                      {% if summary.model_type == 'yolo26' %}
+                        YOLO26
+                      {% else %}
+                        U-Net
+                      {% endif %}
+                    </div>
+                    <div class="col-12 col-sm-3">
                       <span class="text-secondary">Imágenes analizadas:</span> {{ summary.num_images }}
                     </div>
-                    <div class="col-12 col-sm-4">
+                    <div class="col-12 col-sm-3">
                       <span class="text-secondary">Imágenes con tumor:</span> {{ summary.num_with_tumor }}
                     </div>
-                    <div class="col-12 col-sm-4">
+                    <div class="col-12 col-sm-3">
                       <span class="text-secondary">Volumen relativo:</span>
                       {% if summary.total_area_mm2 and summary.total_area_mm2 > 0 %}
                         {{ "%.1f" % summary.total_area_mm2 }} mm²·slice

@@ -15,6 +15,7 @@ from flask import Flask, request, render_template
 import pydicom
 
 from ml.predecir import cargar_modelo, predecir_imagen
+from ml.yolo_infer import cargar_modelo_yolo, predecir_imagen_yolo
 
 # ------------------------------------------------------------
 # Configuración básica (usar raíz del proyecto)
@@ -23,6 +24,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
 MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
+YOLO26_MODEL_PATH = os.path.join(BASE_DIR, "models", "yolo26n-seg.pt")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
@@ -33,29 +35,45 @@ app = Flask(
     template_folder=os.path.join(BASE_DIR, "templates"),
 )
 
-modelo = None
+modelos = {}
 DEVICE = None
+
+
+def get_yolo_source():
+    return YOLO26_MODEL_PATH if os.path.exists(YOLO26_MODEL_PATH) else "yolo26n-seg.pt"
 
 
 # ------------------------------------------------------------
 # Carga perezosa del modelo
 # ------------------------------------------------------------
 
-def get_modelo():
-    global modelo, DEVICE
-    if modelo is not None:
-        return modelo, DEVICE
+def get_modelo(model_type="unet"):
+    global modelos, DEVICE
+    if model_type in modelos:
+        return modelos[model_type], DEVICE
 
     import torch
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            f"No se encontró el modelo entrenado en {MODEL_PATH}. Ejecuta entrenar.py primero."
-        )
+    if model_type == "unet":
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(
+                f"No se encontró el modelo entrenado en {MODEL_PATH}. Ejecuta entrenar.py primero."
+            )
+        modelos[model_type] = cargar_modelo(MODEL_PATH, device=DEVICE)
+    elif model_type == "yolo26":
+        yolo_source = get_yolo_source()
+        modelos[model_type] = cargar_modelo_yolo(yolo_source)
+    else:
+        raise ValueError("Tipo de modelo no soportado")
 
-    modelo = cargar_modelo(MODEL_PATH, device=DEVICE)
-    return modelo, DEVICE
+    return modelos[model_type], DEVICE
+
+
+def predecir_con_modelo(model, model_type, dcm_path, device):
+    if model_type == "yolo26":
+        return predecir_imagen_yolo(model, dcm_path, conf=0.25, iou=0.45, device=device)
+    return predecir_imagen(model, dcm_path, device=device, threshold=0.5)
 
 
 # ------------------------------------------------------------
@@ -148,24 +166,40 @@ def extraer_estadisticas_dicom(dcm_path, mascara):
 
 @app.route("/", methods=["GET"])
 def main_menu():
-    return render_template("main_menu.html", images=None, error=None, summary=None)
+    return render_template(
+        "main_menu.html", images=None, error=None, summary=None, selected_model="unet"
+    )
 
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    model_type = (request.form.get("model_type") or "unet").strip().lower()
+    if model_type not in {"unet", "yolo26"}:
+        model_type = "unet"
+
     file = request.files.get("file")
     if file is None or file.filename == "":
         return render_template(
-            "main_menu.html", images=None, error="No se envió ningún archivo", summary=None
+            "main_menu.html",
+            images=None,
+            error="No se envió ningún archivo",
+            summary=None,
+            selected_model=model_type,
         )
 
     filename = file.filename
     ext = os.path.splitext(filename)[1].lower()
 
     try:
-        model, device = get_modelo()
+        model, device = get_modelo(model_type)
     except Exception as e:
-        return render_template("main_menu.html", images=None, error=str(e), summary=None)
+        return render_template(
+            "main_menu.html",
+            images=None,
+            error=str(e),
+            summary=None,
+            selected_model=model_type,
+        )
 
     images_out = []
 
@@ -174,6 +208,7 @@ def predict():
             self.num_images = 0
             self.num_with_tumor = 0
             self.total_area_mm2 = 0.0
+            self.model_type = model_type
 
     summary = Summary()
 
@@ -182,9 +217,7 @@ def predict():
         file.save(save_path)
 
         try:
-            img, mascara, mascara_prob = predecir_imagen(
-                model, save_path, device=device, threshold=0.5
-            )
+            img, mascara, mascara_prob = predecir_con_modelo(model, model_type, save_path, device)
             img_src = guardar_figura_prediccion(img, mascara, mascara_prob)
             area = int(mascara.sum())
             stats = extraer_estadisticas_dicom(save_path, mascara)
@@ -210,6 +243,7 @@ def predict():
                 images=None,
                 error=f"Error al procesar DICOM: {e}",
                 summary=None,
+                selected_model=model_type,
             )
 
     elif ext == ".zip":
@@ -237,12 +271,13 @@ def predict():
                     images=None,
                     error="El ZIP no contiene archivos .dcm",
                     summary=None,
+                    selected_model=model_type,
                 )
 
             for dcm_path in sorted(dcm_paths)[:20]:
                 try:
-                    img, mascara, mascara_prob = predecir_imagen(
-                        model, dcm_path, device=device, threshold=0.5
+                    img, mascara, mascara_prob = predecir_con_modelo(
+                        model, model_type, dcm_path, device
                     )
                     img_src = guardar_figura_prediccion(img, mascara, mascara_prob)
                     area = int(mascara.sum())
@@ -272,6 +307,7 @@ def predict():
                 images=None,
                 error=f"Error al procesar ZIP: {e}",
                 summary=None,
+                selected_model=model_type,
             )
 
     else:
@@ -280,6 +316,7 @@ def predict():
             images=None,
             error="Tipo de archivo no soportado. Usa .dcm o .zip",
             summary=None,
+            selected_model=model_type,
         )
 
     return render_template(
@@ -287,4 +324,5 @@ def predict():
         images=images_out,
         error=None,
         summary=summary if summary.num_images > 0 else None,
+        selected_model=model_type,
     )

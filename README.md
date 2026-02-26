@@ -4,7 +4,7 @@
 Sistema para detección y visualización de tumores cerebrales en imágenes T1wCE.
 Incluye:
 - Pipeline clásico de procesamiento + Machine Learning.
-- Modelo de IA (U‑Net en PyTorch) para segmentar automáticamente la zona tumoral.
+- Modelo de IA con opción de U‑Net (PyTorch) o YOLO26 para detectar/segmentar la zona tumoral.
 - Interfaz de escritorio (Tkinter) y frontend web (Flask) para uso sencillo por el usuario.
 
 ## Estructura del proyecto
@@ -14,6 +14,7 @@ DisenoDeInterfaz/
 │
 ├── main.py               # Entrada GUI de escritorio (Tkinter)
 ├── entrenar.py           # Wrapper para entrenar la U‑Net
+├── entrenar_yolo.py      # Wrapper para entrenar YOLO-Seg
 ├── predecir.py           # Wrapper para usar predicción U‑Net por consola
 ├── web_app.py            # Wrapper para lanzar la app web (Flask)
 ├── core/                 # Lógica clásica
@@ -27,7 +28,9 @@ DisenoDeInterfaz/
 │   ├── modelo_unet.py    # Arquitectura U‑Net
 │   ├── dataset_loader.py # Dataset/Dataloaders BraTS (pseudo‑máscaras)
 │   ├── entrenar.py       # Lazo de entrenamiento U‑Net
-│   └── predecir.py       # Funciones de inferencia y visualización IA
+│   ├── predecir.py       # Funciones de inferencia y visualización IA (U‑Net)
+│   ├── yolo_infer.py     # Funciones de inferencia YOLO
+│   └── entrenar_yolo.py  # Lazo de entrenamiento YOLO-Seg
 ├── gui/
 │   └── interfaz_visual.py # Interfaz completa de escritorio
 ├── web/
@@ -79,6 +82,16 @@ Con esto, los scripts `entrenar.py`, `predecir.py`, la GUI (`main.py`) y la app 
 	```
 3. El mejor modelo se guardará en `models/best_model.pth`.
 
+### 1.1) Entrenar la IA (YOLO)
+
+1. Prepara dataset YOLO en:
+	`datasets/brats_yolo/data.yaml`
+2. Ejecuta el entrenamiento:
+	```bash
+	python entrenar_yolo.py
+	```
+3. Por defecto usa `yolo26n-seg.pt` como base y copia el mejor modelo a `models/yolo26n-seg.pt`.
+
 ### 2) Interfaz de escritorio (modo completo)
 
 ```bash
@@ -87,7 +100,7 @@ python main.py
 
 - Carga un ZIP con la base de datos (BraTS).
 - Procesa imágenes, detecta tumores, entrena un clasificador clásico y muestra análisis.
-- Botones extra permiten usar la IA (U‑Net) para analizar imágenes T1wCE individuales o carpetas.
+- Botones extra permiten usar IA (U‑Net o YOLO) para analizar imágenes T1wCE individuales o carpetas.
 
 ### 3) Frontend web (modo simple para usuario)
 
@@ -98,7 +111,14 @@ python web_app.py
 Luego abre en el navegador: `http://localhost:5000`
 
 - Sube un archivo `.dcm` o un `.zip` con varias T1wCE.
-- La IA resalta la región tumoral más brillante y muestra área aproximada, lado de la imagen y aviso de calidad.
+- Elige el modelo (`U-Net` o `YOLO26`) y la IA resalta la región tumoral, mostrando área aproximada, lado de la imagen y aviso de calidad.
+
+### Nota sobre YOLO
+
+- Web (selector):
+	- `YOLO26` intenta `models/yolo26n-seg.pt` y si no existe usa `yolo26n-seg.pt`.
+- GUI (botón YOLO): usa `models/yolo26n-seg.pt` y, si no existe, usa `yolo26n-seg.pt`.
+- Para una guía detallada de entrenamiento YOLO, revisa `GUIA_ENTRENAMIENTO_YOLO.md`.
 
 ## Autores
 

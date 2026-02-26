@@ -1,0 +1,9 @@
+# Dataset YOLOv8 para segmentación de tumores cerebrales
+# Ajusta 'path' si cambias la ubicación del dataset.
+
+path: datasets/brats_yolo
+train: images/train
+val: images/val
+
+names:
+  0: tumor
