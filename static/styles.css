@@ -1,5 +1,26 @@
 /* App-specific tweaks on top of Bootstrap */
 
+/* Animated background canvas */
+#bg-canvas {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: -1;
+	pointer-events: none;
+}
+
+body.bg-body-tertiary {
+	background: transparent !important;
+}
+
+.card {
+	background: rgba(30, 41, 59, 0.85) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(100, 180, 255, 0.15) !important;
+}
+
 .app-result-img {
 	width: 100%;
 	height: auto;
