@@ -122,4 +122,15 @@ Luego abre en el navegador: `http://localhost:5000`
 
 ## Autores
 
-Narvaez, Ochoa, Zarza
+Cuevas Estrada Joel
+Zarza Morales Diego
+
+## Venv
+Creacion dentro del folder del proyecto
+
+``bash
+python3 -m venv .venv
+source .venv/bin/activate
+``
+entrar al venv: source .venv/bin/activate
+salir del venv: deactivate
