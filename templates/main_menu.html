@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Detección de Tumores Cerebrales</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
@@ -23,15 +24,15 @@
 
             <form action="/predict" method="post" enctype="multipart/form-data">
               <div class="mb-3">
-                <label class="form-label">Modelo de IA</label>
-                <select class="form-select" name="model_type">
+                <label class="form-label" for="model_type">Modelo de IA</label>
+                <select id="model_type" class="form-select" name="model_type" title="Modelo de IA">
                   <option value="unet" {% if selected_model == 'unet' %}selected{% endif %}>U-Net (segmentación actual)</option>
                   <option value="yolo26" {% if selected_model == 'yolo26' %}selected{% endif %}>YOLO26 (detección/segmentación)</option>
                 </select>
               </div>
               <div class="mb-3">
-                <label class="form-label">Selecciona archivo (.dcm o .zip)</label>
-                <input class="form-control" type="file" name="file" accept=".dcm,.zip" required />
+                <label class="form-label" for="file_input">Selecciona archivo (.dcm o .zip)</label>
+                <input id="file_input" class="form-control" type="file" name="file" accept=".dcm,.zip" title="Selecciona un archivo DICOM (.dcm) o un ZIP con imágenes" placeholder="Selecciona un archivo .dcm o .zip" aria-label="Archivo de imagen DICOM o ZIP" required />
                 <div class="form-text">
                   • .dcm = una sola imagen T1wCE<br>
                   • .zip = varias imágenes T1wCE
