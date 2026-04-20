@@ -1,4 +1,5 @@
-"""Wrapper para lanzar el entrenamiento definido en ml.entrenar.
+"""
+Wrapper para lanzar el entrenamiento definido en ml.entrenar.
 
 Asume que la base de datos está en la carpeta "brats_data/Base de datos Brats"
 en la raíz del proyecto.
@@ -15,7 +16,7 @@ if __name__ == "__main__":
 
     entrenar(
         root_dir=ROOT_DIR,
-        num_epochs=30,
+        num_epochs=3,
         batch_size=4,
         learning_rate=0.001,
         save_dir="models",
