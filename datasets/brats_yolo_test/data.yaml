@@ -1,0 +1,5 @@
+path: /home/nekolinux/Deteccion_de_tumores_cerebrales/datasets/brats_yolo_test
+train: images/train
+val: images/val
+names:
+  0: tumor
