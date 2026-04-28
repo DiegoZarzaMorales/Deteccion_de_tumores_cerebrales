@@ -14,6 +14,18 @@ from .modelo_unet import crear_modelo
 from .dataset_loader import crear_dataloaders
 
 
+def resolver_dispositivo(device=None):
+    """Resuelve el dispositivo de entrenamiento según la preferencia y disponibilidad."""
+    if device in (None, 'auto'):
+        return 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    if device == 'cuda' and not torch.cuda.is_available():
+        print("CUDA no está disponible en este entorno. Se usará CPU.")
+        return 'cpu'
+
+    return device
+
+
 class DiceLoss(nn.Module):
     """Dice Loss para segmentación"""
     def __init__(self, smooth=1.0):
@@ -142,9 +154,8 @@ def entrenar(
     """Función principal de entrenamiento"""
     save_dir = Path(save_dir)
     save_dir.mkdir(exist_ok=True)
-    
-    if device is None:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    device = resolver_dispositivo(device)
     
     print(f"\n{'='*60}")
     print("ENTRENAMIENTO DEL MODELO U-NET")
