@@ -230,7 +230,8 @@ def entrenar(
             )
             print(f"  ✓ Mejor modelo guardado (Dice: {best_dice:.4f})")
         
-        if (epoch + 1) % 1000 == 0:
+        # Cada cuarta época, guardar un checkpoint intermedio
+        if (epoch + 1) % 10 == 0:
             torch.save(
                 {
                     'epoch': epoch,
