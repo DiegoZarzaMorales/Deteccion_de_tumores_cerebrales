@@ -19,6 +19,8 @@ def parse_args():
     parser.add_argument("--learning-rate", type=float, default=0.001)
     return parser.parse_args()
 
+## CODIGO PARA EJECUTAR CON PARAMETROS PERSONALIZADOS DESDE LA TERMINAL:
+## python entrenar.py --device cuda --epochs 100 --batch-size 5 --learning-rate 0.0001
 
 if __name__ == "__main__":
     args = parse_args()

@@ -7,9 +7,9 @@ import numpy as np
 import pydicom
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
 import cv2
 from pathlib import Path
+import random
 
 
 class BraTSDataset(Dataset):
@@ -19,13 +19,13 @@ class BraTSDataset(Dataset):
     Args:
         root_dir: Directorio raíz con las carpetas de pacientes
         modality: Modalidad de imagen ('T1w', 'T1wCE', 'T2w', 'FLAIR')
-        transform: Transformaciones a aplicar
+        augment: Si True, aplica aumentos aleatorios a imagen y máscara
         size: Tamaño de redimensionamiento (default: 256x256)
     """
-    def __init__(self, root_dir, modality='T1wCE', transform=None, size=256):
+    def __init__(self, root_dir, modality='T1wCE', augment=False, size=256):
         self.root_dir = Path(root_dir)
         self.modality = modality
-        self.transform = transform
+        self.augment = augment
         self.size = size
         self.data_list = self._cargar_lista_archivos()
         
@@ -63,15 +63,31 @@ class BraTSDataset(Dataset):
         
         # Crear máscara (pseudo-label basada en zona más brillante)
         mask = self._crear_mascara_automatica(img)
+
+        if self.augment:
+            img, mask = self._aplicar_augmentacion_sincronizada(img, mask)
         
         # Convertir a tensores
         img = torch.from_numpy(img).unsqueeze(0)  # (1, H, W)
         mask = torch.from_numpy(mask).unsqueeze(0)  # (1, H, W)
         
-        # Aplicar transformaciones
-        if self.transform:
-            img = self.transform(img)
-        
+        return img, mask
+
+    def _aplicar_augmentacion_sincronizada(self, img, mask):
+        """Aplica augmentaciones geométricas iguales a imagen y máscara."""
+        if random.random() < 0.5:
+            img = np.flip(img, axis=1).copy()
+            mask = np.flip(mask, axis=1).copy()
+
+        if random.random() < 0.5:
+            img = np.flip(img, axis=0).copy()
+            mask = np.flip(mask, axis=0).copy()
+
+        k = random.randint(0, 3)
+        if k:
+            img = np.rot90(img, k).copy()
+            mask = np.rot90(mask, k).copy()
+
         return img, mask
     
     def _crear_mascara_automatica(self, img):
@@ -103,20 +119,24 @@ class BraTSDataset(Dataset):
 
 def crear_dataloaders(root_dir, batch_size=4, train_split=0.8, num_workers=0):
     """Crea dataloaders para entrenamiento y validación"""
-    # Transformaciones básicas
-    transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomRotation(10),
-    ])
-    
-    # Dataset completo
-    full_dataset = BraTSDataset(root_dir, modality='T1wCE', transform=transform)
+    # Dataset base sin augmentación; se crean dos vistas, una para train y otra para val
+    full_dataset = BraTSDataset(root_dir, modality='T1wCE', augment=False)
     
     # Split train/val
     train_size = int(train_split * len(full_dataset))
     val_size = len(full_dataset) - train_size
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        full_dataset, [train_size, val_size]
+    indices = list(range(len(full_dataset)))
+    random.shuffle(indices)
+    train_indices = indices[:train_size]
+    val_indices = indices[train_size:]
+
+    train_dataset = torch.utils.data.Subset(
+        BraTSDataset(root_dir, modality='T1wCE', augment=True),
+        train_indices,
+    )
+    val_dataset = torch.utils.data.Subset(
+        BraTSDataset(root_dir, modality='T1wCE', augment=False),
+        val_indices,
     )
     
     # Dataloaders
