@@ -154,6 +154,9 @@ def entrenar(
     """Función principal de entrenamiento"""
     save_dir = Path(save_dir)
     save_dir.mkdir(exist_ok=True)
+    
+    checkpoint_dir = save_dir / 'epoch_checkpoints'
+    checkpoint_dir.mkdir(exist_ok=True)
 
     device = resolver_dispositivo(device)
     
@@ -227,14 +230,14 @@ def entrenar(
             )
             print(f"  ✓ Mejor modelo guardado (Dice: {best_dice:.4f})")
         
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % 1000 == 0:
             torch.save(
                 {
                     'epoch': epoch,
                     'model_state_dict': modelo.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 },
-                save_dir / f'checkpoint_epoch_{epoch+1}.pth',
+                checkpoint_dir / f'checkpoint_epoch_{epoch+1}.pth',
             )
     
     writer.close()
@@ -260,7 +263,7 @@ def entrenar(
     
     plt.tight_layout()
     plt.savefig(save_dir / 'training_history.png', dpi=150)
-    print(f"\n✓ Gráficas guardadas en {save_dir / 'training_history.png'}")
+    print(f"\n✓ Gráficas de rendimiento guardadas en {save_dir / 'training_history.png'}")
     
     print(f"\n{'='*60}")
     print("ENTRENAMIENTO COMPLETADO")

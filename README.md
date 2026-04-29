@@ -126,8 +126,14 @@ Cuevas Estrada Joel
 Zarza Morales Diego
 
 ## Venv
-Creacion dentro del folder del proyecto
+Creacion dentro del folder del proyecto (En windows es diferentre)
+Windows
 
+``bash
+.\.venv\Scripts\Activate.ps1
+``
+
+LINUX
 ``bash
 python3 -m venv .venv
 source .venv/bin/activate
