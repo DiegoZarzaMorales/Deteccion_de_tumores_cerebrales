@@ -24,11 +24,7 @@ from ml.predecir import (
     predecir_carpeta as predecir_carpeta_ia,
     visualizar_prediccion as visualizar_prediccion_ia,
 )
-from ml.yolo_infer import (
-    cargar_modelo_yolo,
-    predecir_imagen_yolo,
-    predecir_carpeta_yolo,
-)
+
 
 
 class SistemaTumoresGUI:
@@ -329,14 +325,8 @@ class SistemaTumoresGUI:
             return False
 
     def ia_analizar_imagen(self):
-        usar_yolo = messagebox.askyesno(
-            "Seleccionar modelo IA",
-            "¿Usar YOLO para este análisis?\n\nSí = YOLO26\nNo = U-Net",
-        )
-
-        if usar_yolo and not self.ia_cargar_modelo_yolo():
-            return
-        if not usar_yolo and not self.ia_cargar_modelo():
+        # Usar siempre U-Net (YOLO removido)
+        if not self.ia_cargar_modelo():
             return
 
         img_path = filedialog.askopenfilename(
@@ -348,24 +338,15 @@ class SistemaTumoresGUI:
             return
 
         try:
-            modelo_txt = "YOLO" if usar_yolo else "U-Net"
+            modelo_txt = "U-Net"
             self.actualizar_estado(f"Analizando imagen con {modelo_txt}...")
 
-            if usar_yolo:
-                img, mascara, mascara_prob = predecir_imagen_yolo(
-                    self.modelo_yolo,
-                    img_path,
-                    conf=0.25,
-                    iou=0.45,
-                    device=self.device_ia,
-                )
-            else:
-                img, mascara, mascara_prob = predecir_imagen_ia(
-                    self.modelo_ia,
-                    img_path,
-                    device=self.device_ia,
-                    threshold=0.5,
-                )
+            img, mascara, mascara_prob = predecir_imagen_ia(
+                self.modelo_ia,
+                img_path,
+                device=self.device_ia,
+                threshold=0.5,
+            )
 
             visualizar_prediccion_ia(img, mascara, mascara_prob)
             self.actualizar_estado(f"Análisis con {modelo_txt} completado")
@@ -374,14 +355,8 @@ class SistemaTumoresGUI:
             self.actualizar_estado("Error en análisis IA")
 
     def ia_analizar_carpeta(self):
-        usar_yolo = messagebox.askyesno(
-            "Seleccionar modelo IA",
-            "¿Usar YOLO para esta carpeta?\n\nSí = YOLO26\nNo = U-Net",
-        )
-
-        if usar_yolo and not self.ia_cargar_modelo_yolo():
-            return
-        if not usar_yolo and not self.ia_cargar_modelo():
+        # Usar siempre U-Net (YOLO removido)
+        if not self.ia_cargar_modelo():
             return
 
         carpeta = filedialog.askdirectory(
@@ -392,25 +367,15 @@ class SistemaTumoresGUI:
             return
 
         try:
-            modelo_txt = "YOLO" if usar_yolo else "U-Net"
+            modelo_txt = "U-Net"
             self.actualizar_estado(f"Analizando carpeta con {modelo_txt}...")
 
-            if usar_yolo:
-                predecir_carpeta_yolo(
-                    self.modelo_yolo,
-                    carpeta,
-                    output_dir=os.path.join(self.proyecto_dir, "predicciones_yolo"),
-                    conf=0.25,
-                    iou=0.45,
-                    device=self.device_ia,
-                )
-            else:
-                predecir_carpeta_ia(
-                    self.modelo_ia,
-                    carpeta,
-                    output_dir=os.path.join(self.proyecto_dir, "predicciones"),
-                    device=self.device_ia,
-                )
+            predecir_carpeta_ia(
+                self.modelo_ia,
+                carpeta,
+                output_dir=os.path.join(self.proyecto_dir, "predicciones"),
+                device=self.device_ia,
+            )
 
             self.actualizar_estado(f"Análisis de carpeta con {modelo_txt} completado")
         except Exception as e:
@@ -421,19 +386,7 @@ class SistemaTumoresGUI:
         """Carga el modelo YOLO26 si aún no está en memoria."""
         if self.modelo_yolo is not None:
             return True
-
-        model_path_26 = os.path.join(self.proyecto_dir, "models", "yolo26n-seg.pt")
-        yolo_source = model_path_26 if os.path.exists(model_path_26) else "yolo26n-seg.pt"
-
-        try:
-            self.actualizar_estado("Cargando modelo YOLO...")
-            self.modelo_yolo = cargar_modelo_yolo(yolo_source)
-            self.actualizar_estado("Modelo YOLO listo")
-            return True
-        except Exception as e:
-            messagebox.showerror("Error YOLO", f"No se pudo cargar YOLO:\n{e}")
-            self.actualizar_estado("Error al cargar YOLO")
-            return False
+        return False
 
     # =============================
     # PIPELINE CLÁSICO

@@ -53,8 +53,6 @@ torchvision==0.26.0+cu128
 tqdm==4.67.3
 typing_extensions==4.15.0
 tzdata==2026.2
-ultralytics==8.4.41
-ultralytics-thop==2.0.19
 urllib3==2.6.3
  
 # Dependencias para autenticación y DB

@@ -28,7 +28,6 @@
                 <label class="form-label" for="model_type">Modelo de IA</label>
                 <select id="model_type" class="form-select" name="model_type" title="Modelo de IA">
                   <option value="unet" {% if selected_model == 'unet' %}selected{% endif %}>U-Net (segmentación actual)</option>
-                  <option value="yolo26" {% if selected_model == 'yolo26' %}selected{% endif %}>YOLO26 (detección/segmentación)</option>
                 </select>
               </div>
               <div class="mb-3">

@@ -15,7 +15,6 @@ from flask import Flask, request, render_template
 import pydicom
 
 from ml.predecir import cargar_modelo, predecir_imagen
-from ml.yolo_infer import cargar_modelo_yolo, predecir_imagen_yolo
 
 # ------------------------------------------------------------
 # Configuración básica (usar raíz del proyecto)
@@ -24,7 +23,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
 MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
-YOLO26_MODEL_PATH = os.path.join(BASE_DIR, "models", "yolo26n-seg.pt")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
@@ -38,9 +36,6 @@ app = Flask(
 modelos = {}
 DEVICE = None
 
-
-def get_yolo_source():
-    return YOLO26_MODEL_PATH if os.path.exists(YOLO26_MODEL_PATH) else "yolo26n-seg.pt"
 
 
 # ------------------------------------------------------------
@@ -61,9 +56,6 @@ def get_modelo(model_type="unet"):
                 f"No se encontró el modelo entrenado en {MODEL_PATH}. Ejecuta entrenar.py primero."
             )
         modelos[model_type] = cargar_modelo(MODEL_PATH, device=DEVICE)
-    elif model_type == "yolo26":
-        yolo_source = get_yolo_source()
-        modelos[model_type] = cargar_modelo_yolo(yolo_source)
     else:
         raise ValueError("Tipo de modelo no soportado")
 
@@ -71,8 +63,6 @@ def get_modelo(model_type="unet"):
 
 
 def predecir_con_modelo(model, model_type, dcm_path, device):
-    if model_type == "yolo26":
-        return predecir_imagen_yolo(model, dcm_path, conf=0.25, iou=0.45, device=device)
     return predecir_imagen(model, dcm_path, device=device, threshold=0.5)
 
 
