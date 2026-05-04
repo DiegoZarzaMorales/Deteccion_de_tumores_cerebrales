@@ -24,10 +24,10 @@ wheels/
 *.egg
 
 # PyTorch models
-*.pth
-*.pt
-models/*.pth
-models/*.pt
+# *.pth
+# *.pt
+# models/*.pth
+# models/*.pt
 
 # TensorBoard
 runs/
