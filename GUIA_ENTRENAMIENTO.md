@@ -62,7 +62,7 @@ Esto iniciará el entrenamiento y verás:
 Una vez entrenado, puedes predecir tumores en nuevas imágenes:
 
 ```bash
-python predecir.py
+python python-scripts/predecir.py
 ```
 
 ---
@@ -158,7 +158,7 @@ Abre tu navegador en: http://localhost:6006
 ## 🎓 Siguientes Pasos
 
 1. ✅ Entrenar el modelo básico
-2. ✅ Evaluar resultados con `predecir.py`
+2. ✅ Evaluar resultados con `python-scripts/predecir.py`
 3. 🔄 Ajustar hiperparámetros si es necesario
 4. 🎯 Integrar con tu interfaz actual
 5. 📈 Usar datos reales con anotaciones médicas

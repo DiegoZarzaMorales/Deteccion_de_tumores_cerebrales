@@ -12,9 +12,15 @@ Incluye:
 ```
 DisenoDeInterfaz/
 │
-├── main.py               # Entrada GUI de escritorio (Tkinter)
+├── python-scripts/       # Scripts que antes estaban en la raíz
+│   ├── main.py           # Entrada GUI de escritorio (Tkinter)
+│   ├── predecir.py       # Wrapper para usar predicción U‑Net por consola
+│   ├── preparar_yolo_dcm.py
+│   ├── entrenar_yolo.py
+│   ├── dataset_loader.py
+│   └── modelo_unet.py
 ├── entrenar.py           # Wrapper para entrenar la U‑Net
-├── predecir.py           # Wrapper para usar predicción U‑Net por consola
+├── convertir_mat_a_imagen.py
 ├── web_app.py            # Wrapper para lanzar la app web (Flask)
 ├── core/                 # Lógica clásica
 │   ├── config.py         # Configuración y parámetros de detección
@@ -66,7 +72,7 @@ El modelo de IA entrenado no se sube a GitHub por tamaño (>100 MB por archivo).
 	└── ... resto de archivos del proyecto
 	```
 
-Con esto, los scripts `entrenar.py`, `predecir.py`, la GUI (`main.py`) y la app web (`web_app.py`) encontrarán automáticamente `models/best_model.pth`.
+Con esto, los scripts `entrenar.py`, `python-scripts/predecir.py`, la GUI (`python-scripts/main.py`) y la app web (`web_app.py`) encontrarán automáticamente `models/best_model.pth`.
 
 ## Uso rápido
 
@@ -86,7 +92,7 @@ Con esto, los scripts `entrenar.py`, `predecir.py`, la GUI (`main.py`) y la app 
 ### 2) Interfaz de escritorio (modo completo)
 
 ```bash
-python main.py
+python python-scripts/main.py
 ```
 
 - Carga un ZIP con la base de datos (BraTS).

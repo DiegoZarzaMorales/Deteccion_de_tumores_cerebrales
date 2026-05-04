@@ -5,7 +5,7 @@ Esta guía explica cómo entrenar YOLO en este proyecto (enfocado en YOLO26) par
 ## 1) Archivos añadidos para entrenamiento
 
 - `ml/entrenar_yolo.py`: lógica de entrenamiento YOLO-Seg.
-- `entrenar_yolo.py`: wrapper para ejecutar desde la raíz.
+- `python-scripts/entrenar_yolo.py`: wrapper para ejecutar desde `python-scripts/`.
 - `datasets/brats_yolo/data.yaml`: plantilla de configuración del dataset.
 
 ## 2) Requisitos
@@ -85,7 +85,7 @@ Si cambias de ruta, actualiza `path`.
 ### Comando rápido (desde raíz del proyecto)
 
 ```bash
-python entrenar_yolo.py
+python python-scripts/entrenar_yolo.py
 ```
 
 Usa por defecto:
@@ -129,7 +129,7 @@ o models/yolo11n-seg.pt
 
 Esto lo deja listo para:
 - Web: `python web_app.py`
-- GUI: `python main.py`
+- GUI: `python python-scripts/main.py`
 
 ## 7) Validación rápida post-entrenamiento
 
