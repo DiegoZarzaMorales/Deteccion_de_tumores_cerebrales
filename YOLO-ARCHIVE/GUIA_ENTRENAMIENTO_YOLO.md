@@ -98,7 +98,7 @@ Usa por defecto:
 ### Comando personalizado
 
 ```bash
-python entrenar_yolo.py --data datasets/brats_yolo/data.yaml --model yolo26n-seg.pt --epochs 120 --batch 8 --imgsz 256 --device 0 --name tumor_brats_v1
+python python-scripts/entrenar_yolo.py --data datasets/brats_yolo/data.yaml --model yolo26n-seg.pt --epochs 120 --batch 8 --imgsz 256 --device 0 --name tumor_brats_v1
 ```
 
 Parámetros útiles:
