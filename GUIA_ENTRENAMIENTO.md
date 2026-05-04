@@ -1,5 +1,8 @@
 # 🧠 Guía de Entrenamiento - Deep Learning para Detección de Tumores
 
+> Nota: El soporte para YOLO fue retirado del flujo principal; los recursos (código, modelos y datasets)
+> se han archivado en la carpeta `YOLO-ARCHIVE` dentro del repositorio para referencia futura.
+
 ## 📋 ¿Qué hace cada archivo?
 
 ### 1. **modelo_unet.py**
