@@ -1,4 +1,5 @@
 # Sistema de Detección y Visualización de Tumores Cerebrales
+# Python 3.14.4 OBLIGATORIO
 
 ## Descripción
 Sistema para detección y visualización de tumores cerebrales en imágenes T1wCE.
