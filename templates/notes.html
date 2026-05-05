@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mis Notas - Detección de Tumores Cerebrales</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <style>
+    .navbar-custom {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .note-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    .note-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    .note-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+    .note-date {
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+    .note-preview {
+      max-height: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #999;
+      line-height: 1.5;
+    }
+    .btn-new-note {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      font-weight: 600;
+    }
+    .btn-new-note:hover {
+      background: linear-gradient(135deg, #5568d3 0%, #6a3e91 100%);
+      color: white;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .empty-state-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="{{ url_for('main_menu') }}">
+        TumorIA
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Abrir menú" title="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main_menu') }}">Análisis</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="{{ url_for('notes') }}">Notas</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('profile') }}">Mi Perfil</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}">Cerrar Sesión</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenido -->
+  <div class="container py-5">
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h1>Mis Notas</h1>
+        <p class="text-secondary">Bloc de notas personal para tus observaciones clínicas</p>
+      </div>
+        <div class="col-md-4 text-end">
+        <a href="{{ url_for('create_note') }}" class="btn btn-new-note btn-lg">
+          Nueva Nota
+        </a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar" title="Cerrar"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if notes %}
+      <div class="row">
+        {% for note in notes %}
+          <div class="col-md-6">
+            <div class="card note-card">
+              <div class="card-body">
+                <div class="note-title">{{ note.title }}</div>
+                <div class="note-date">
+                  Actualizada: {{ note.updated_at.strftime('%d/%m/%Y %H:%M') }}
+                </div>
+                <div class="note-preview mt-3">
+                  {{ note.content[:150] }}{% if note.content|length > 150 %}...{% endif %}
+                </div>
+              </div>
+              <div class="card-footer bg-transparent border-top">
+                <div class="btn-group w-100" role="group">
+                  <a href="{{ url_for('edit_note', note_id=note.id) }}" class="btn btn-sm btn-outline-primary">
+                    Editar
+                  </a>
+                  <form method="POST" action="{{ url_for('delete_note', note_id=note.id) }}" class="inline-form">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar esta nota?');">
+                      Eliminar
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+        <div class="empty-state">
+        <h3>No tienes notas aún</h3>
+        <p class="text-secondary mb-4">Crea tu primera nota para comenzar a documentar tus observaciones.</p>
+        <a href="{{ url_for('create_note') }}" class="btn btn-new-note btn-lg">
+          Crear Primera Nota
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

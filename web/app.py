@@ -5,16 +5,19 @@
 
 import os
 import uuid
+from datetime import datetime
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
+from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
 import pydicom
 
 from ml.predecir import cargar_modelo, predecir_imagen
+from .models import db, User, LoginHistory, Note
 
 # ------------------------------------------------------------
 # Configuración básica (usar raíz del proyecto)
@@ -22,7 +25,8 @@ from ml.predecir import cargar_modelo, predecir_imagen
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_10.pth")
+DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
@@ -32,6 +36,33 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "static"),
     template_folder=os.path.join(BASE_DIR, "templates"),
 )
+
+# Configuración de seguridad y BD
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DATABASE_PATH}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Configuración de sesiones para máxima compatibilidad
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Inicializar BD
+db.init_app(app)
+
+# Inicializar Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# Crear tablas si no existen
+with app.app_context():
+    db.create_all()
 
 modelos = {}
 DEVICE = None
@@ -150,11 +181,206 @@ def extraer_estadisticas_dicom(dcm_path, mascara):
 
 
 # ------------------------------------------------------------
-# Rutas
+# Rutas de Autenticación
 # ------------------------------------------------------------
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Ruta de login."""
+    if current_user.is_authenticated:
+        return redirect(url_for("main_menu"))
+    
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        
+        if not username or not password:
+            flash("Por favor completa todos los campos.", "danger")
+            return redirect(url_for("login"))
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            # Registrar el login en el historial
+            login_history = LoginHistory(
+                user_id=user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', '')[:255]
+            )
+            db.session.add(login_history)
+            db.session.commit()
+            
+            login_user(user, remember=request.form.get("remember", False))
+            flash(f"¡Bienvenido, {user.username}!", "success")
+            return redirect(url_for("main_menu"))
+        else:
+            flash("Usuario o contraseña incorrectos.", "danger")
+    
+    return render_template("login.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """Ruta de registro."""
+    if current_user.is_authenticated:
+        return redirect(url_for("main_menu"))
+    
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+        password_confirm = request.form.get("password_confirm", "").strip()
+        
+        # Validaciones
+        if not username or not email or not password:
+            flash("Por favor completa todos los campos.", "danger")
+            return redirect(url_for("register"))
+        
+        if len(username) < 3:
+            flash("El nombre de usuario debe tener al menos 3 caracteres.", "danger")
+            return redirect(url_for("register"))
+        
+        if password != password_confirm:
+            flash("Las contraseñas no coinciden.", "danger")
+            return redirect(url_for("register"))
+        
+        if len(password) < 6:
+            flash("La contraseña debe tener al menos 6 caracteres.", "danger")
+            return redirect(url_for("register"))
+        
+        if User.query.filter_by(username=username).first():
+            flash("El nombre de usuario ya existe.", "danger")
+            return redirect(url_for("register"))
+        
+        if User.query.filter_by(email=email).first():
+            flash("El email ya está registrado.", "danger")
+            return redirect(url_for("register"))
+        
+        # Crear usuario
+        user = User(username=username, email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        
+        flash("¡Cuenta creada exitosamente! Por favor inicia sesión.", "success")
+        return redirect(url_for("login"))
+    
+    return render_template("register.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    """Ruta de logout."""
+    logout_user()
+    flash("Has cerrado sesión.", "info")
+    return redirect(url_for("login"))
+
+
+# ------------------------------------------------------------
+# Rutas de Notas (Bloc de Notas)
+# ------------------------------------------------------------
+
+@app.route("/notes", methods=["GET"])
+@login_required
+def notes():
+    """Vista principal de notas."""
+    user_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).all()
+    return render_template("notes.html", notes=user_notes)
+
+
+@app.route("/notes/create", methods=["GET", "POST"])
+@login_required
+def create_note():
+    """Crear una nueva nota."""
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "").strip()
+        
+        if not title or not content:
+            flash("El título y contenido son requeridos.", "danger")
+            return redirect(url_for("create_note"))
+        
+        note = Note(title=title, content=content, user_id=current_user.id)
+        db.session.add(note)
+        db.session.commit()
+        
+        flash("Nota creada exitosamente.", "success")
+        return redirect(url_for("notes"))
+    
+    return render_template("create_note.html")
+
+
+@app.route("/notes/<int:note_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_note(note_id):
+    """Editar una nota existente."""
+    note = Note.query.get_or_404(note_id)
+    
+    # Verificar que el usuario sea el propietario
+    if note.user_id != current_user.id:
+        flash("No tienes permiso para editar esta nota.", "danger")
+        return redirect(url_for("notes"))
+    
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "").strip()
+        
+        if not title or not content:
+            flash("El título y contenido son requeridos.", "danger")
+            return redirect(url_for("edit_note", note_id=note_id))
+        
+        note.title = title
+        note.content = content
+        note.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        flash("Nota actualizada exitosamente.", "success")
+        return redirect(url_for("notes"))
+    
+    return render_template("edit_note.html", note=note)
+
+
+@app.route("/notes/<int:note_id>/delete", methods=["POST"])
+@login_required
+def delete_note(note_id):
+    """Eliminar una nota."""
+    note = Note.query.get_or_404(note_id)
+    
+    # Verificar que el usuario sea el propietario
+    if note.user_id != current_user.id:
+        flash("No tienes permiso para eliminar esta nota.", "danger")
+        return redirect(url_for("notes"))
+    
+    db.session.delete(note)
+    db.session.commit()
+    
+    flash("Nota eliminada exitosamente.", "success")
+    return redirect(url_for("notes"))
+
+
+@app.route("/profile", methods=["GET"])
+@login_required
+def profile():
+    """Ver perfil del usuario e historial de logins."""
+    login_history = LoginHistory.query.filter_by(user_id=current_user.id).order_by(LoginHistory.login_date.desc()).all()
+    return render_template("profile.html", login_history=login_history)
+
+
+# ------------------------------------------------------------
+# Rutas principales (protegidas con autenticación)
+# ------------------------------------------------------------
 
 @app.route("/", methods=["GET"])
+def index():
+    """Redirige a login si no está autenticado, o a main_menu si lo está."""
+    if current_user.is_authenticated:
+        return redirect(url_for("main_menu"))
+    return redirect(url_for("login"))
+
+
+@app.route("/main", methods=["GET"])
+@login_required
 def main_menu():
     return render_template(
         "main_menu.html", images=None, error=None, summary=None, selected_model="unet"
@@ -162,6 +388,7 @@ def main_menu():
 
 
 @app.route("/predict", methods=["POST"])
+@login_required
 def predict():
     model_type = (request.form.get("model_type") or "unet").strip().lower()
     if model_type not in {"unet", "yolo26"}:

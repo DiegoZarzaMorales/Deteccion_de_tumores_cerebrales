@@ -1,5 +1,11 @@
 /* App-specific tweaks on top of Bootstrap */
 
+/* CSS compatibility improvements */
+html, body {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+
 /* Animated background canvas */
 #bg-canvas {
 	position: fixed;
@@ -17,6 +23,7 @@ body.bg-body-tertiary {
 
 .card {
 	background: rgba(30, 41, 59, 0.85) !important;
+	-webkit-backdrop-filter: blur(10px);
 	backdrop-filter: blur(10px);
 	border: 1px solid rgba(100, 180, 255, 0.15) !important;
 }
@@ -25,4 +32,18 @@ body.bg-body-tertiary {
 	width: 100%;
 	height: auto;
 	display: block;
+}
+
+/* Accesibilidad */
+.inline-form {
+	display: inline;
+}
+
+.break-all {
+	word-break: break-all;
+}
+
+.large-icon {
+	font-size: 40px;
+	margin-bottom: 10px;
 }

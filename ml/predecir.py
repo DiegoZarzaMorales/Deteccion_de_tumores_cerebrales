@@ -15,7 +15,7 @@ from .modelo_unet import UNet
 def cargar_modelo(model_path, device='cuda' if torch.cuda.is_available() else 'cpu'):
     """Carga un modelo entrenado"""
     modelo = UNet(in_channels=1, out_channels=1)
-    checkpoint = torch.load(model_path, map_location=device)
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     modelo.load_state_dict(checkpoint['model_state_dict'])
     modelo = modelo.to(device)
     modelo.eval()

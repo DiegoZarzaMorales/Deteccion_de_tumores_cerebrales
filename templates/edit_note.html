@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editar Nota - Detección de Tumores Cerebrales</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <style>
+    .navbar-custom {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .editor-card {
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+    .form-control, .form-control-lg {
+      border-radius: 5px;
+      border: 1px solid #dee2e6;
+    }
+    .form-control:focus, .form-control-lg:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    .btn-save {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      font-weight: 600;
+    }
+    .btn-save:hover {
+      background: linear-gradient(135deg, #5568d3 0%, #6a3e91 100%);
+      color: white;
+    }
+    .info-dates {
+      background: #f8f9fa;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-left: 4px solid #667eea;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="{{ url_for('main_menu') }}">
+        TumorIA
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Abrir menú" title="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main_menu') }}">Análisis</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="{{ url_for('notes') }}">Notas</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('profile') }}">Mi Perfil</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}">Cerrar Sesión</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenido -->
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card editor-card">
+          <div class="card-header bg-light border-bottom p-4">
+            <h3 class="mb-0">Editar Nota</h3>
+          </div>
+          <div class="card-body p-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar" title="Cerrar"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="info-dates">
+              <div class="row text-sm">
+                <div class="col-6">
+                  <small><strong>Creada:</strong> {{ note.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                </div>
+                <div class="col-6 text-end">
+                  <small><strong>Última actualización:</strong> {{ note.updated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                </div>
+              </div>
+            </div>
+
+            <form method="POST">
+              <div class="mb-4">
+                <label class="form-label fw-bold" for="title">Título de la Nota</label>
+                <input 
+                  class="form-control form-control-lg" 
+                  id="title" 
+                  name="title" 
+                  type="text" 
+                  value="{{ note.title }}"
+                  maxlength="255"
+                  required
+                  autofocus
+                />
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label fw-bold" for="content">Contenido</label>
+                <textarea 
+                  class="form-control" 
+                  id="content" 
+                  name="content" 
+                  rows="12"
+                  required
+                >{{ note.content }}</textarea>
+                <small class="form-text text-muted d-block mt-2">
+                  Los cambios se guardarán con la fecha de actualización actual.
+                </small>
+              </div>
+
+              <div class="d-flex gap-3">
+                <button class="btn btn-save btn-lg flex-grow-1" type="submit">
+                  Guardar Cambios
+                </button>
+                <a href="{{ url_for('notes') }}" class="btn btn-outline-secondary btn-lg">
+                  Cancelar
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

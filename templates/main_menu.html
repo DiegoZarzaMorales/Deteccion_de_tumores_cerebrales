@@ -7,9 +7,49 @@
   <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <style>
+    .navbar-custom {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+  </style>
 </head>
 <body class="bg-body-tertiary">
   
+  <!-- Navbar con autenticación -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid px-3 px-md-5">
+      <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('main_menu') }}">
+        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="TumorIA Logo" height="40" class="me-2">
+        TumorIA - Detección de Tumores Cerebrales
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Abrir menú" title="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="{{ url_for('main_menu') }}">Análisis</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('notes') }}">Notas</a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
+              <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
+              {{ current_user.username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{{ url_for('profile') }}">Mi Perfil</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Cerrar Sesión</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
   <!-- Fondo animado -->
   <canvas id="bg-canvas"></canvas>
 
@@ -104,9 +144,6 @@
                         <div class="mt-2 small">
                           {% if img.area_mm2 %}
                             <div><span class="text-secondary">Tamaño estimado:</span> {{ "%.1f" % img.area_mm2 }} mm²</div>
-                          {% endif %}
-                          {% if img.side %}
-                            <div><span class="text-secondary">Localización aproximada:</span> {{ img.side }}</div>
                           {% endif %}
                         </div>
 
