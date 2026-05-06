@@ -6,7 +6,7 @@
 import os
 import warnings
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 warnings.filterwarnings(
     "ignore",
@@ -24,7 +24,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify, session
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
 import pydicom
@@ -60,6 +60,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Duración por defecto para sesiones "permanentes" (cuando el usuario marca "Recuérdame")
+app.permanent_session_lifetime = timedelta(days=30)
 
 # Inicializar BD
 db.init_app(app)
@@ -238,7 +241,10 @@ def login():
             db.session.add(login_history)
             db.session.commit()
             
-            login_user(user, remember=request.form.get("remember", False))
+            remember = bool(request.form.get("remember"))
+            login_user(user, remember=remember)
+            # Establecer session.permanent solo si el usuario eligió "Recuérdame".
+            session.permanent = remember
             flash(f"¡Bienvenido, {user.username}!", "success")
             return redirect(url_for("main_menu"))
         else:
