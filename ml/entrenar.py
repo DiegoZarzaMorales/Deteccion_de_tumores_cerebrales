@@ -89,7 +89,7 @@ def entrenar_epoch(modelo, dataloader, criterion, optimizer, device):
     amp_enabled = str(device).startswith('cuda')
     scaler = getattr(entrenar_epoch, '_scaler', None)
     if scaler is None or scaler.is_enabled() != amp_enabled:
-        scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
+        scaler = torch.amp.GradScaler('cuda', enabled=amp_enabled)
         entrenar_epoch._scaler = scaler
     
     pbar = tqdm(dataloader, desc='Training')
@@ -98,7 +98,7 @@ def entrenar_epoch(modelo, dataloader, criterion, optimizer, device):
         masks = masks.to(device, non_blocking=True)
         
         optimizer.zero_grad()
-        with torch.cuda.amp.autocast(enabled=amp_enabled):
+        with torch.amp.autocast(device_type='cuda', enabled=amp_enabled):
             outputs = modelo(imgs)
             loss = criterion(outputs, masks)
 
@@ -138,7 +138,7 @@ def validar_epoch(modelo, dataloader, criterion, device):
             imgs = imgs.to(device, non_blocking=True)
             masks = masks.to(device, non_blocking=True)
             
-            with torch.cuda.amp.autocast(enabled=amp_enabled):
+            with torch.amp.autocast(device_type='cuda', enabled=amp_enabled):
                 outputs = modelo(imgs)
                 loss = criterion(outputs, masks)
             
@@ -206,7 +206,7 @@ def entrenar(
     )
 
     # Comunicar el estado AMP al helper de entrenamiento por época
-    entrenar_epoch._scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
+    entrenar_epoch._scaler = torch.amp.GradScaler('cuda', enabled=amp_enabled)
     
     criterion = CombinedLoss(bce_weight=0.5, dice_weight=0.5)
     optimizer = optim.Adam(modelo.parameters(), lr=learning_rate)
