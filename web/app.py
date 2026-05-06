@@ -4,8 +4,21 @@
 # ============================================================
 
 import os
+import warnings
 import uuid
 from datetime import datetime
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"Numpy built with MINGW-W64 on Windows 64 bits is experimental.*",
+    category=Warning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r"invalid value encountered in (exp2|nextafter|log10)",
+    category=RuntimeWarning,
+    module=r"numpy\.core\.getlimits",
+)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -25,7 +38,8 @@ from .models import db, User, LoginHistory, Note
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_10.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
+CHECKPOINT_FALLBACK = os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_10.pth")
 DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -68,6 +82,19 @@ modelos = {}
 DEVICE = None
 
 
+def resolver_modelo_web():
+    """Devuelve la ruta del modelo preferido para la app web.
+
+    Prioriza best_model.pth porque es el modelo final guardado al terminar el entrenamiento.
+    Si no existe, usa un checkpoint como respaldo solo para no bloquear la interfaz.
+    """
+    candidatos = [MODEL_PATH, CHECKPOINT_FALLBACK]
+    for candidate in candidatos:
+        if os.path.exists(candidate):
+            return candidate
+    return MODEL_PATH
+
+
 
 # ------------------------------------------------------------
 # Carga perezosa del modelo
@@ -82,11 +109,12 @@ def get_modelo(model_type="unet"):
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
     if model_type == "unet":
-        if not os.path.exists(MODEL_PATH):
+        model_path = resolver_modelo_web()
+        if not os.path.exists(model_path):
             raise FileNotFoundError(
-                f"No se encontró el modelo entrenado en {MODEL_PATH}. Ejecuta entrenar.py primero."
+                f"No se encontró un modelo entrenado en {MODEL_PATH} ni en {CHECKPOINT_FALLBACK}. Ejecuta entrenar.py primero."
             )
-        modelos[model_type] = cargar_modelo(MODEL_PATH, device=DEVICE)
+        modelos[model_type] = cargar_modelo(model_path, device=DEVICE)
     else:
         raise ValueError("Tipo de modelo no soportado")
 

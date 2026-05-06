@@ -33,6 +33,7 @@ class DiceLoss(nn.Module):
         self.smooth = smooth
     
     def forward(self, pred, target):
+        pred = torch.sigmoid(pred)
         pred = pred.contiguous().view(-1)
         target = target.contiguous().view(-1)
         
@@ -46,7 +47,7 @@ class CombinedLoss(nn.Module):
     """Combinación de BCE y Dice Loss"""
     def __init__(self, bce_weight=0.5, dice_weight=0.5):
         super(CombinedLoss, self).__init__()
-        self.bce = nn.BCELoss()
+        self.bce = nn.BCEWithLogitsLoss()
         self.dice = DiceLoss()
         self.bce_weight = bce_weight
         self.dice_weight = dice_weight
@@ -59,6 +60,7 @@ class CombinedLoss(nn.Module):
 
 def calcular_metricas(pred, target, threshold=0.5):
     """Calcula métricas de evaluación"""
+    pred = torch.sigmoid(pred)
     pred_binary = (pred > threshold).float()
     target_binary = target.float()
     
@@ -84,18 +86,29 @@ def entrenar_epoch(modelo, dataloader, criterion, optimizer, device):
     modelo.train()
     epoch_loss = 0
     epoch_metrics = {'dice': 0, 'iou': 0, 'accuracy': 0}
+    amp_enabled = str(device).startswith('cuda')
+    scaler = getattr(entrenar_epoch, '_scaler', None)
+    if scaler is None or scaler.is_enabled() != amp_enabled:
+        scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
+        entrenar_epoch._scaler = scaler
     
     pbar = tqdm(dataloader, desc='Training')
     for imgs, masks in pbar:
-        imgs = imgs.to(device)
-        masks = masks.to(device)
+        imgs = imgs.to(device, non_blocking=True)
+        masks = masks.to(device, non_blocking=True)
         
         optimizer.zero_grad()
-        outputs = modelo(imgs)
-        loss = criterion(outputs, masks)
-        
-        loss.backward()
-        optimizer.step()
+        with torch.cuda.amp.autocast(enabled=amp_enabled):
+            outputs = modelo(imgs)
+            loss = criterion(outputs, masks)
+
+        if amp_enabled:
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
         
         with torch.no_grad():
             metrics = calcular_metricas(outputs, masks)
@@ -118,22 +131,21 @@ def validar_epoch(modelo, dataloader, criterion, device):
     modelo.eval()
     epoch_loss = 0
     epoch_metrics = {'dice': 0, 'iou': 0, 'accuracy': 0}
+    amp_enabled = str(device).startswith('cuda')
     
     with torch.no_grad():
-        pbar = tqdm(dataloader, desc='Validation')
-        for imgs, masks in pbar:
-            imgs = imgs.to(device)
-            masks = masks.to(device)
+        for imgs, masks in dataloader:
+            imgs = imgs.to(device, non_blocking=True)
+            masks = masks.to(device, non_blocking=True)
             
-            outputs = modelo(imgs)
-            loss = criterion(outputs, masks)
+            with torch.cuda.amp.autocast(enabled=amp_enabled):
+                outputs = modelo(imgs)
+                loss = criterion(outputs, masks)
             
             metrics = calcular_metricas(outputs, masks)
             epoch_loss += loss.item()
             for key in epoch_metrics:
                 epoch_metrics[key] += metrics[key]
-            
-            pbar.set_postfix({'loss': f'{loss.item():.4f}', 'dice': f"{metrics['dice']:.4f}"})
     
     num_batches = len(dataloader)
     epoch_loss /= num_batches
@@ -148,8 +160,13 @@ def entrenar(
     num_epochs=50,
     batch_size=4,
     learning_rate=0.001,
+    checkpoint_every_n_epochs=10,
     save_dir='models',
     device=None,
+    num_workers=0,
+    prefetch_factor=2,
+    persistent_workers=False,
+    use_amp=True,
 ):
     """Función principal de entrenamiento"""
     save_dir = Path(save_dir)
@@ -159,14 +176,22 @@ def entrenar(
     checkpoint_dir.mkdir(exist_ok=True)
 
     device = resolver_dispositivo(device)
+    amp_enabled = use_amp and str(device).startswith('cuda')
+    # Habilitar autotuning de cuDNN para entradas de tamaño fijo (mejora throughput)
+    try:
+        torch.backends.cudnn.benchmark = True
+    except Exception:
+        pass
     
     print(f"\n{'='*60}")
     print("ENTRENAMIENTO DEL MODELO U-NET")
     print(f"{'='*60}")
     print(f"Dispositivo: {device}")
+    print(f"AMP: {'activado' if amp_enabled else 'desactivado'}")
     print(f"Épocas: {num_epochs}")
     print(f"Batch size: {batch_size}")
     print(f"Learning rate: {learning_rate}")
+    print(f"Checkpoint cada: {checkpoint_every_n_epochs} épocas")
     print(f"{'='*60}\n")
     
     modelo, device = crear_modelo(device)
@@ -175,8 +200,13 @@ def entrenar(
         root_dir,
         batch_size=batch_size,
         train_split=0.8,
-        num_workers=0,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+        persistent_workers=persistent_workers,
     )
+
+    # Comunicar el estado AMP al helper de entrenamiento por época
+    entrenar_epoch._scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
     
     criterion = CombinedLoss(bce_weight=0.5, dice_weight=0.5)
     optimizer = optim.Adam(modelo.parameters(), lr=learning_rate)
@@ -230,8 +260,8 @@ def entrenar(
             )
             print(f"  ✓ Mejor modelo guardado (Dice: {best_dice:.4f})")
         
-        # Cada decima época, guardar un checkpoint intermedio
-        if (epoch + 1) % 10 == 0:
+        # Guardar un checkpoint intermedio cada N épocas
+        if checkpoint_every_n_epochs and (epoch + 1) % checkpoint_every_n_epochs == 0:
             torch.save(
                 {
                     'epoch': epoch,
@@ -243,28 +273,39 @@ def entrenar(
     
     writer.close()
     
-    plt.figure(figsize=(12, 4))
-    
-    plt.subplot(1, 2, 1)
-    plt.plot(history['train_loss'], label='Train Loss')
-    plt.plot(history['val_loss'], label='Val Loss')
-    plt.xlabel('Época')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.title('Pérdida durante el entrenamiento')
-    plt.grid(True)
-    
-    plt.subplot(1, 2, 2)
-    plt.plot(history['val_dice'], label='Val Dice Score', color='green')
-    plt.xlabel('Época')
-    plt.ylabel('Dice Score')
-    plt.legend()
-    plt.title('Dice Score en validación')
-    plt.grid(True)
-    
-    plt.tight_layout()
-    plt.savefig(save_dir / 'training_history.png', dpi=150)
-    print(f"\n✓ Gráficas de rendimiento guardadas en {save_dir / 'training_history.png'}")
+    # Graficar con eje de épocas explícito; con 1 época usar marcador para evitar figura "vacía"
+    epochs_recorded = len(history['train_loss'])
+    if epochs_recorded > 0:
+        x_epochs = list(range(1, epochs_recorded + 1))
+
+        plt.figure(figsize=(12, 4))
+
+        plt.subplot(1, 2, 1)
+        plt.plot(x_epochs, history['train_loss'], label='Train Loss', marker='o')
+        plt.plot(x_epochs, history['val_loss'], label='Val Loss', marker='o')
+        plt.xlabel('Época')
+        plt.ylabel('Loss')
+        plt.xticks(x_epochs)
+        plt.legend()
+        plt.title('Pérdida durante el entrenamiento')
+        plt.grid(True)
+
+        plt.subplot(1, 2, 2)
+        plt.plot(x_epochs, history['val_dice'], label='Val Dice Score', color='green', marker='o')
+        plt.xlabel('Época')
+        plt.ylabel('Dice Score')
+        plt.xticks(x_epochs)
+        plt.legend()
+        plt.title('Dice Score en validación')
+        plt.grid(True)
+
+        output_path = save_dir / 'training_history.png'
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"\n✓ Gráficas de rendimiento guardadas en {output_path.resolve()}")
+    else:
+        print("\n! No se generó training_history.png porque no hubo épocas completadas.")
     
     print(f"\n{'='*60}")
     print("ENTRENAMIENTO COMPLETADO")

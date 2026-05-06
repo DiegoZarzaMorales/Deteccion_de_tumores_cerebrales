@@ -3,6 +3,7 @@ Flask==3.0.0
 Flask-Login==0.6.3
 Flask-SQLAlchemy==3.1.1
 Werkzeug==3.0.0
+Flask-Migrate==4.0.0
 
 # Core Web Dependencies
 blinker==1.9.0
@@ -16,31 +17,72 @@ idna==3.13
 requests==2.33.1
 urllib3==2.6.3
 
-# Image & ML Processing (compatible with Python 3.14)
-numpy>=1.20,<1.27
-opencv-python>=4.5.0
-Pillow>=8.0.0
-pydicom>=3.0.0
-scikit-image>=0.17.0
-scikit-learn>=0.24.0
-scipy>=1.7.0
+# Database
+SQLAlchemy==2.0.49
+Mako==1.3.12
+alembic==1.18.4
+greenlet==3.5.0
 
-# Visualization
-matplotlib>=3.5.0
+# Image & ML Processing
+numpy==1.26.4
+opencv-python==4.11.0.86
+Pillow==12.2.0
+pydicom==3.0.2
+nibabel>=5.0.0
+scikit-image==0.26.0
+scikit-learn==1.8.0
+scipy==1.17.1
+
+# Deep Learning - PyTorch with CUDA 12.6
+torch==2.11.0+cu126
+torchvision==0.26.0+cu126
+
+# Visualization & Analysis
+matplotlib==3.10.9
+seaborn==0.13.2
+tensorboard==2.20.0
+tensorboard-data-server==0.7.2
+pandas==2.3.3
+tqdm==4.67.3
+
+# Image processing utilities
+ImageIO==2.37.3
+scikit-image==0.26.0
+tifffile==2026.3.3
+networkx==3.6.1
 
 # Utilities
-tqdm>=4.60.0
+setuptools==81.0.0
+six==1.17.0
+typing_extensions==4.15.0
+filelock==3.29.0
+packaging==26.2
+python-dateutil==2.9.0.post0
 
-# ML extras 
-torch>=2.2.0
-torchvision>=0.15.2
-tensorboard>=2.13.0
-pandas>=1.5.3
-seaborn>=0.12.2
-
-# Dependencias para autenticación y DB
-passlib[bcrypt]==1.7.4
-Flask-Migrate==4.0.0
+# Autenticación y seguridad
+passlib==1.7.4
+bcrypt==5.0.0
 psycopg2-binary==2.9.12
 
-# Not including YOLO
+# Dependencias para TensorBoard y protobuf
+protobuf==7.34.1
+grpcio==1.80.0
+absl-py==2.4.0
+Markdown==3.10.2
+
+# Math & Scientific
+joblib==1.5.3
+kiwisolver==1.5.0
+lazy-loader==0.5
+mpmath==1.3.0
+sympy==1.14.0
+threadpoolctl==3.6.0
+pytz==2026.2
+tzdata==2026.2
+contourpy==1.3.3
+fonttools==4.62.1
+fsspec==2026.4.0
+pyparsing==3.3.2
+
+# System
+colorama==0.4.6

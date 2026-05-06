@@ -82,7 +82,8 @@ class UNet(nn.Module):
             concat_skip = torch.cat((skip_connection, x), dim=1)
             x = self.ups[idx+1](concat_skip)  # Convolución
 
-        return torch.sigmoid(self.final_conv(x))
+        # Return raw logits (no sigmoid). Use BCEWithLogitsLoss for stability with AMP.
+        return self.final_conv(x)
 
 
 def crear_modelo(device='cuda' if torch.cuda.is_available() else 'cpu'):
