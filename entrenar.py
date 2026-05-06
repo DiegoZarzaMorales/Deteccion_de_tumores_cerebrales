@@ -88,7 +88,7 @@ def resolver_directorio_datos(data_dir, base_dir):
     return str(data_path)
 
 ## CODIGO PARA EJECUTAR CON PARAMETROS PERSONALIZADOS DESDE LA TERMINAL:
-## python entrenar.py --device cuda --epochs 100 --batch-size 5 --learning-rate 0.0001 --checkpoint-every 5 --data-dir "C:\Users\RESURGE\Desktop\learn-resources\BraTS-PEDs-v1\Training"
+## python entrenar.py --device cuda --epochs 1 --batch-size 8 --num-workers 4 --prefetch-factor 2 --persistent-workers --checkpoint-every 0 --data-dir "C:\Users\RESURGE\Desktop\learn-resources\BraTS-PEDs-v1\Training"
 
 if __name__ == "__main__":
     args = parse_args()

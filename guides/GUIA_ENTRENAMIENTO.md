@@ -162,7 +162,3 @@ Abre tu navegador en: http://localhost:6006
 3. 🔄 Ajustar hiperparámetros si es necesario
 4. 🎯 Integrar con tu interfaz actual
 5. 📈 Usar datos reales con anotaciones médicas
-
----
-
-**¡Listo! Ahora tienes todo para entrenar tu IA de detección de tumores** 🚀
