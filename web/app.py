@@ -33,13 +33,15 @@ from ml.predecir import cargar_modelo, predecir_imagen
 from .models import db, User, LoginHistory, Note
 
 # ------------------------------------------------------------
-# Configuración básica (usar raíz del proyecto)
+# Configuración de rutas, modelos
 # ------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
 MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
-CHECKPOINT_FALLBACK = os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_10.pth")
+
+# AQUI SE INDICA EL MODELO A USARSE EN A PREDICCION, SI NO EXISTE SE USARÁ EL MODELO DE RESPALDO (CHECKPOINT_FALLBACK)
+CHECKPOINT_FALLBACK = os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_80.pth")
 DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -88,10 +90,10 @@ DEVICE = None
 def resolver_modelo_web():
     """Devuelve la ruta del modelo preferido para la app web.
 
-    Prioriza best_model.pth porque es el modelo final guardado al terminar el entrenamiento.
-    Si no existe, usa un checkpoint como respaldo solo para no bloquear la interfaz.
+    Prioriza checkpoint_epoch_80.pth porque es el checkpoint que quieres usar para inferencia.
+    Si no existe, usa best_model.pth como respaldo para no bloquear la interfaz.
     """
-    candidatos = [MODEL_PATH, CHECKPOINT_FALLBACK]
+    candidatos = [CHECKPOINT_FALLBACK, MODEL_PATH]
     for candidate in candidatos:
         if os.path.exists(candidate):
             return candidate
