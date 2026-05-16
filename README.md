@@ -111,6 +111,51 @@ Luego abre en el navegador: `http://localhost:5000`
 - Sube un archivo `.dcm` o un `.zip` con varias T1wCE.
 -- Elige el modelo (`U-Net`) y la IA resalta la región tumoral, mostrando área aproximada, lado de la imagen y aviso de calidad.
 
+## Despliegue (producción)
+
+Recomendado: Linux con Python 3.10/3.11, Gunicorn + Nginx.
+
+Instalación básica (CPU):
+
+```bash
+pip install -r requirements.txt
+pip install gunicorn
+```
+
+Ejecutar con Gunicorn:
+
+```bash
+gunicorn --bind 0.0.0.0:8000 web_app:app
+```
+
+Variables de entorno clave:
+
+- `APP_ENV=production`
+- `SECRET_KEY=...` (obligatoria en producción)
+- `DATABASE_URL=...` (opcional; si no se define se usa SQLite)
+- `MODEL_URL=...` (opcional; descarga el modelo si no existe en disco)
+- `UPLOAD_FOLDER=/ruta/uploads`
+- `RESULTS_FOLDER=/ruta/static/results`
+- `MAX_UPLOAD_MB=200`
+- `MAX_ZIP_FILES=200`
+- `MAX_ZIP_TOTAL_MB=300`
+
+Si necesitas GPU en servidor, instala PyTorch con CUDA desde el índice oficial de PyTorch y ajusta las versiones según tu CUDA.
+
+## Despliegue en Railway (CPU)
+
+1. Sube el proyecto a GitHub (incluye `Procfile`).
+2. En Railway, crea un proyecto y conecta el repo.
+3. Añade un servicio Postgres (opcional pero recomendado) para persistir usuarios/notas.
+4. Variables de entorno recomendadas:
+	- `APP_ENV=production`
+	- `SECRET_KEY=...`
+	- `DATABASE_URL` (Railway la inyecta si agregas Postgres)
+	- `MODEL_URL=...` (link directo al .pth si no lo subes al repo)
+5. Despliegue: Railway detecta `Procfile` y usa Gunicorn automáticamente.
+
+Nota: el filesystem en Railway es efímero. Si quieres conservar uploads/resultados, usa storage externo (S3).
+
 <!-- YOLO support removed; resources archived in `YOLO-ARCHIVE` -->
 
 ## Autores

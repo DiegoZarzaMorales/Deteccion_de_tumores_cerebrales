@@ -46,3 +46,9 @@ Thumbs.db
 # Data (opcional - si no quieres subir los datos DICOM)
 # brats_data/
 # *.dcm
+
+# Local artifacts
+uploads/
+static/results/
+datasets/
+*.db

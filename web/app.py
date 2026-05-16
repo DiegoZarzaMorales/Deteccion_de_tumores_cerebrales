@@ -4,6 +4,7 @@
 # ============================================================
 
 import os
+import shutil
 import warnings
 import uuid
 from datetime import datetime, timedelta
@@ -24,6 +25,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import requests
 from flask import Flask, request, render_template, redirect, url_for, flash, jsonify, session
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
@@ -36,13 +38,27 @@ from .models import db, User, LoginHistory, Note
 # Configuración de rutas, modelos
 # ------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
+APP_ENV = os.environ.get("APP_ENV", "development").lower()
+IS_PROD = APP_ENV == "production"
+
+UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", os.path.join(BASE_DIR, "uploads"))
+RESULTS_FOLDER = os.environ.get("RESULTS_FOLDER", os.path.join(BASE_DIR, "static", "results"))
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(BASE_DIR, "models", "best_model.pth"))
 
 # AQUI SE INDICA EL MODELO A USARSE EN A PREDICCION, SI NO EXISTE SE USARÁ EL MODELO DE RESPALDO (CHECKPOINT_FALLBACK)
-CHECKPOINT_FALLBACK = os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_80.pth")
-DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
+CHECKPOINT_FALLBACK = os.environ.get(
+    "CHECKPOINT_FALLBACK",
+    os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_80.pth"),
+)
+DATABASE_PATH = os.environ.get("DATABASE_PATH", os.path.join(BASE_DIR, "tumores_cerebrales.db"))
+
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "200"))
+MAX_ZIP_FILES = int(os.environ.get("MAX_ZIP_FILES", "200"))
+MAX_ZIP_TOTAL_MB = int(os.environ.get("MAX_ZIP_TOTAL_MB", "300"))
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
@@ -55,13 +71,14 @@ app = Flask(
 
 # Configuración de seguridad y BD
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DATABASE_PATH}'
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or f'sqlite:///{DATABASE_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Configuración de sesiones para máxima compatibilidad
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_SECURE'] = IS_PROD
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_MB * 1024 * 1024
 
 # Duración por defecto para sesiones "permanentes" (cuando el usuario marca "Recuérdame")
 app.permanent_session_lifetime = timedelta(days=30)
@@ -97,7 +114,37 @@ def resolver_modelo_web():
     for candidate in candidatos:
         if os.path.exists(candidate):
             return candidate
+        if candidate == MODEL_PATH:
+            descargar_modelo_si_falta(candidate)
+            if os.path.exists(candidate):
+                return candidate
     return MODEL_PATH
+
+
+def descargar_modelo_si_falta(model_path):
+    model_url = os.environ.get("MODEL_URL")
+    if not model_url or os.path.exists(model_path):
+        return False
+
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    tmp_path = f"{model_path}.download"
+
+    try:
+        with requests.get(model_url, stream=True, timeout=60) as response:
+            response.raise_for_status()
+            with open(tmp_path, "wb") as output:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        output.write(chunk)
+        os.replace(tmp_path, model_path)
+        return True
+    except Exception:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        return False
 
 
 
@@ -211,6 +258,61 @@ def extraer_estadisticas_dicom(dcm_path, mascara):
         "side": side,
         "quality_warning": quality_warning,
     }
+
+
+def extraer_estadisticas_genericas(img, mascara):
+    """Extrae métricas básicas para imágenes no DICOM (PNG/JPEG)."""
+    h, w = img.shape
+    area_px = int(mascara.sum())
+
+    side = None
+    if area_px > 0:
+        ys, xs = np.nonzero(mascara)
+        if len(xs) > 0:
+            cx = float(xs.mean())
+            side = "mitad izquierda de la imagen" if cx < w / 2 else "mitad derecha de la imagen"
+
+    img_norm = (img - img.min()) / (img.max() - img.min() + 1e-8)
+    dyn = float(img_norm.max() - img_norm.min())
+    quality_warning = None
+    if dyn < 0.2:
+        quality_warning = "Bajo contraste: la región podría no ser claramente visible."
+
+    return {
+        "area_px": area_px,
+        "area_mm2": None,
+        "side": side,
+        "quality_warning": quality_warning,
+    }
+
+
+def extraer_zip_seguro(zip_path, extract_dir):
+    import zipfile
+
+    abs_extract = os.path.abspath(extract_dir)
+    total_size = 0
+
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        infos = zf.infolist()
+        if len(infos) > MAX_ZIP_FILES:
+            raise ValueError("El ZIP contiene demasiados archivos para procesar.")
+
+        for info in infos:
+            total_size += info.file_size
+            if total_size > MAX_ZIP_TOTAL_MB * 1024 * 1024:
+                raise ValueError("El ZIP excede el tamano permitido.")
+
+            target_path = os.path.abspath(os.path.join(abs_extract, info.filename))
+            if not target_path.startswith(abs_extract + os.sep):
+                raise ValueError("El ZIP contiene rutas no permitidas.")
+
+            if info.is_dir():
+                os.makedirs(target_path, exist_ok=True)
+                continue
+
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            with zf.open(info) as src, open(target_path, "wb") as dst:
+                shutil.copyfileobj(src, dst)
 
 
 # ------------------------------------------------------------
@@ -427,7 +529,7 @@ def main_menu():
 @login_required
 def predict():
     model_type = (request.form.get("model_type") or "unet").strip().lower()
-    if model_type not in {"unet", "yolo26"}:
+    if model_type not in {"unet"}:
         model_type = "unet"
 
     file = request.files.get("file")
@@ -500,7 +602,6 @@ def predict():
             )
 
     elif ext == ".zip":
-        import zipfile
 
         save_path = os.path.join(UPLOAD_FOLDER, f"upload_{uuid.uuid4().hex}.zip")
         file.save(save_path)
@@ -509,8 +610,7 @@ def predict():
         os.makedirs(extract_dir, exist_ok=True)
 
         try:
-            with zipfile.ZipFile(save_path, "r") as zf:
-                zf.extractall(extract_dir)
+            extraer_zip_seguro(save_path, extract_dir)
 
             dcm_paths = []
             for root, _, files in os.walk(extract_dir):

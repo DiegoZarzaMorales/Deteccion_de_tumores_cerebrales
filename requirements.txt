@@ -4,6 +4,7 @@ Flask-Login==0.6.3
 Flask-SQLAlchemy==3.1.1
 Werkzeug==3.0.0
 Flask-Migrate==4.0.0
+gunicorn==22.0.0
 
 # Core Web Dependencies
 blinker==1.9.0
@@ -34,8 +35,8 @@ scikit-learn==1.8.0
 scipy==1.17.1
 
 # Deep Learning - PyTorch with CUDA 12.6
-torch==2.11.0+cu126
-torchvision==0.26.0+cu126
+torch==2.11.0
+torchvision==0.26.0
 
 # Visualization & Analysis
 matplotlib==3.10.9
