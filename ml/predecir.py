@@ -27,10 +27,23 @@ def cargar_modelo(model_path, device='cuda' if torch.cuda.is_available() else 'c
     return modelo
 
 
+def _cargar_imagen(img_path):
+    """Carga una imagen DICOM o PNG/JPEG como matriz float32."""
+    ext = Path(img_path).suffix.lower()
+    if ext == ".dcm":
+        dcm = pydicom.dcmread(img_path)
+        img = dcm.pixel_array.astype(np.float32)
+        return img, True
+
+    img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise ValueError("No se pudo leer la imagen. Formato no soportado.")
+    return img.astype(np.float32), False
+
+
 def predecir_imagen(modelo, img_path, size=256, device='cpu', threshold=0.5):
-    """Realiza predicción en una imagen DICOM"""
-    dcm = pydicom.dcmread(img_path)
-    img = dcm.pixel_array.astype(np.float32)
+    """Realiza predicción en una imagen DICOM o PNG/JPEG"""
+    img, _ = _cargar_imagen(img_path)
     img_original = img.copy()
     
     img_norm = (img - img.min()) / (img.max() - img.min() + 1e-8)
@@ -101,8 +114,10 @@ def predecir_carpeta(modelo, carpeta_path, output_dir='predicciones', device='cp
     carpeta_path = Path(carpeta_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
-    
-    archivos = list(carpeta_path.glob('*.dcm'))
+
+    archivos = []
+    for ext in ("*.dcm", "*.png", "*.jpg", "*.jpeg"):
+        archivos.extend(carpeta_path.glob(ext))
     print(f"\nEncontradas {len(archivos)} imágenes")
     
     for idx, archivo in enumerate(archivos):

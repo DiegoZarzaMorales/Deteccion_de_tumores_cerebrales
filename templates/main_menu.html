@@ -7,14 +7,9 @@
   <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
-  <style>
-    .navbar-custom {
-      background: linear-gradient(135deg, #334db3 0%, #1976d2 50%, #0e3a76 100%);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    }
-  </style>
 </head>
 <body class="bg-body-tertiary">
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
   
   <!-- Navbar con autenticación -->
   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
@@ -50,10 +45,7 @@
     </div>
   </nav>
 
-  <!-- Fondo animado -->
-  <canvas id="bg-canvas"></canvas>
-
-  <main class="container-fluid px-3 px-md-5 py-5{% if not images %} min-vh-100 d-flex align-items-center justify-content-center{% endif %}">
+  <main class="container-fluid px-3 px-md-5 py-5 page-content page-fade{% if not images %} min-vh-100 d-flex align-items-center justify-content-center{% endif %}">
     <div class="row justify-content-center">
       <div class="col-12">
         <div class="card shadow-sm">
@@ -132,9 +124,11 @@
             <div class="row g-3">
               {% for img in images %}
                 <div class="col-12">
-                  <div class="card overflow-hidden">
-                    <img src="{{ img.src }}" class="app-result-img" alt="Predicción IA" />
-                    <div class="card-body">
+                  <div class="card overflow-hidden result-card">
+                    <div class="result-image-wrap">
+                      <img src="{{ img.src }}" class="app-result-img" alt="Predicción IA" />
+                    </div>
+                    <div class="card-body result-meta">
                       {% if img.area > 0 %}
                         <div class="d-flex flex-wrap align-items-center gap-2">
                           <span class="badge text-bg-danger">Tumor detectado</span>
@@ -167,186 +161,6 @@
   </main>
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
-  <script>
- 
-  // Digital Network Background Animation
-  (function() {
-    const canvas = document.getElementById('bg-canvas');
-    const ctx = canvas.getContext('2d');
-    let width, height, particles = [], gridLines = [];
-    const PARTICLE_COUNT = 200;
-    const CONNECTION_DISTANCE = 120;
-    const GRID_SPACING = 60;
-
-    function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-      initGrid();
-    }
-
-    function initGrid() {
-      gridLines = [];
-      // Horizontal lines with perspective
-      for (let y = height * 0.4; y < height + 100; y += GRID_SPACING) {
-        gridLines.push({ y: y, type: 'h' });
-      }
-      // Vertical lines
-      for (let x = -200; x < width + 200; x += GRID_SPACING) {
-        gridLines.push({ x: x, type: 'v' });
-      }
-    }
-
-    function createParticle() {
-      return {
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.8,
-        vy: (Math.random() - 0.5) * 0.8,
-        size: Math.random() * 2 + 1,
-        brightness: Math.random() * 0.5 + 0.5,
-        pulse: Math.random() * Math.PI * 2
-      };
-    }
-
-    function init() {
-      resize();
-      particles = [];
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
-        particles.push(createParticle());
-      }
-    }
-
-    function drawGrid(time) {
-      const vanishY = height * 0.35;
-      const vanishX = width / 2;
-
-      // Draw horizontal grid lines with perspective
-      gridLines.filter(l => l.type === 'h').forEach((line, i) => {
-        const progress = (line.y - vanishY) / (height - vanishY);
-        const alpha = Math.max(0, Math.min(0.15, progress * 0.2));
-        const glow = Math.sin(time * 0.001 + i * 0.3) * 0.05 + 0.1;
-        
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(0, 150, 255, ${alpha + glow})`;
-        ctx.lineWidth = 1;
-        ctx.moveTo(0, line.y);
-        ctx.lineTo(width, line.y);
-        ctx.stroke();
-      });
-
-      // Draw vertical grid lines converging to vanishing point
-      gridLines.filter(l => l.type === 'v').forEach((line, i) => {
-        const glow = Math.sin(time * 0.0015 + i * 0.2) * 0.03 + 0.08;
-        
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(0, 120, 255, ${glow})`;
-        ctx.lineWidth = 1;
-        ctx.moveTo(vanishX, vanishY);
-        ctx.lineTo(line.x, height + 50);
-        ctx.stroke();
-      });
-    }
-
-    function drawParticles(time) {
-      particles.forEach((p, i) => {
-        // Update position
-        p.x += p.vx;
-        p.y += p.vy;
-        p.pulse += 0.02;
-
-        // Wrap around edges
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
-
-        // Pulsing glow
-        const pulse = Math.sin(p.pulse) * 0.3 + 0.7;
-        const alpha = p.brightness * pulse;
-
-        // Draw particle glow
-        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 4);
-        gradient.addColorStop(0, `rgba(100, 200, 255, ${alpha})`);
-        gradient.addColorStop(0.5, `rgba(0, 150, 255, ${alpha * 0.3})`);
-        gradient.addColorStop(1, 'rgba(0, 100, 200, 0)');
-
-        ctx.beginPath();
-        ctx.fillStyle = gradient;
-        ctx.arc(p.x, p.y, p.size * 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Draw particle core
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(150, 220, 255, ${alpha})`;
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    }
-
-    function drawConnections() {
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < CONNECTION_DISTANCE) {
-            const alpha = (1 - dist / CONNECTION_DISTANCE) * 0.4;
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(0, 180, 255, ${alpha})`;
-            ctx.lineWidth = 1;
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.stroke();
-          }
-        }
-      }
-    }
-
-    function drawDataStreams(time) {
-      // Occasional bright data streams
-      const streamCount = 5;
-      for (let i = 0; i < streamCount; i++) {
-        const progress = ((time * 0.0005 + i * 0.2) % 1);
-        const x = (width * 0.2) + (i * width * 0.15);
-        const y = progress * height * 1.5 - height * 0.25;
-        const alpha = Math.sin(progress * Math.PI) * 0.6;
-
-        if (alpha > 0.1) {
-          ctx.beginPath();
-          const gradient = ctx.createLinearGradient(x, y - 50, x, y + 50);
-          gradient.addColorStop(0, 'rgba(0, 200, 255, 0)');
-          gradient.addColorStop(0.5, `rgba(100, 220, 255, ${alpha})`);
-          gradient.addColorStop(1, 'rgba(0, 200, 255, 0)');
-          ctx.strokeStyle = gradient;
-          ctx.lineWidth = 2;
-          ctx.moveTo(x, y - 50);
-          ctx.lineTo(x, y + 50);
-          ctx.stroke();
-        }
-      }
-    }
-
-    function animate(time) {
-      // Dark blue gradient background
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-      bgGradient.addColorStop(0, '#020817');
-      bgGradient.addColorStop(0.5, '#061428');
-      bgGradient.addColorStop(1, '#0a1e3a');
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, width, height);
-
-      drawGrid(time);
-      drawConnections();
-      drawParticles(time);
-
-      requestAnimationFrame(animate);
-    }
-
-    window.addEventListener('resize', resize);
-    init();
-    requestAnimationFrame(animate);
-  })();
-  </script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

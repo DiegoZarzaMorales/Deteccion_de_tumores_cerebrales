@@ -26,13 +26,24 @@ from ml.predecir import (
 )
 
 
+COLOR_BG = "#0f172a"
+COLOR_PANEL = "#13233a"
+COLOR_PANEL_ALT = "#0f1c30"
+COLOR_TEXT = "#e2e8f0"
+COLOR_MUTED = "#94a3b8"
+COLOR_ACCENT = "#1f4f7a"
+COLOR_ACCENT_HOVER = "#1b456a"
+COLOR_NAV = "#243a59"
+COLOR_NAV_HOVER = "#1e324d"
+
+
 
 class SistemaTumoresGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Sistema de Deteccion y Visualizacion de Tumores Cerebrales")
         self.root.geometry("1400x900")
-        self.root.configure(bg="#2c3e50")
+        self.root.configure(bg=COLOR_BG)
 
         self.zip_path = None
         self.df = None
@@ -50,19 +61,19 @@ class SistemaTumoresGUI:
     def crear_interfaz(self):
         """Crea la interfaz grafica completa"""
 
-        frame_titulo = tk.Frame(self.root, bg="#34495e", height=80)
+        frame_titulo = tk.Frame(self.root, bg=COLOR_PANEL, height=80)
         frame_titulo.pack(fill=tk.X, padx=10, pady=10)
 
         titulo = tk.Label(
             frame_titulo,
             text="SISTEMA DE DETECCION DE TUMORES CEREBRALES",
             font=("Arial", 24, "bold"),
-            bg="#34495e",
-            fg="white",
+            bg=COLOR_PANEL,
+            fg=COLOR_TEXT,
         )
         titulo.pack(pady=20)
 
-        frame_central = tk.Frame(self.root, bg="#2c3e50")
+        frame_central = tk.Frame(self.root, bg=COLOR_BG)
         frame_central.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.crear_panel_controles(frame_central)
@@ -70,7 +81,7 @@ class SistemaTumoresGUI:
         self.crear_barra_estado()
 
     def crear_panel_controles(self, parent):
-        frame_controles = tk.Frame(parent, bg="#34495e", width=350)
+        frame_controles = tk.Frame(parent, bg=COLOR_PANEL, width=350)
         frame_controles.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
         frame_controles.pack_propagate(False)
 
@@ -78,8 +89,8 @@ class SistemaTumoresGUI:
             frame_controles,
             text="PANEL DE CONTROL",
             font=("Arial", 16, "bold"),
-            bg="#34495e",
-            fg="white",
+            bg=COLOR_PANEL,
+            fg=COLOR_TEXT,
         )
         titulo_panel.pack(pady=20)
 
@@ -91,9 +102,9 @@ class SistemaTumoresGUI:
             frame_controles,
             text="CARGAR BASE DE DATOS",
             font=("Arial", 12, "bold"),
-            bg="#3498db",
-            fg="white",
-            activebackground="#2980b9",
+            bg=COLOR_ACCENT,
+            fg=COLOR_TEXT,
+            activebackground=COLOR_ACCENT_HOVER,
             activeforeground="white",
             cursor="hand2",
             command=self.cargar_datos,
@@ -105,9 +116,9 @@ class SistemaTumoresGUI:
             frame_controles,
             text="PROCESAR IMAGENES",
             font=("Arial", 12, "bold"),
-            bg="#2ecc71",
-            fg="white",
-            activebackground="#27ae60",
+            bg=COLOR_ACCENT,
+            fg=COLOR_TEXT,
+            activebackground=COLOR_ACCENT_HOVER,
             activeforeground="white",
             cursor="hand2",
             command=self.procesar_datos,
@@ -120,9 +131,9 @@ class SistemaTumoresGUI:
             frame_controles,
             text="CLASIFICAR TUMORES",
             font=("Arial", 12, "bold"),
-            bg="#9b59b6",
-            fg="white",
-            activebackground="#8e44ad",
+            bg=COLOR_ACCENT,
+            fg=COLOR_TEXT,
+            activebackground=COLOR_ACCENT_HOVER,
             activeforeground="white",
             cursor="hand2",
             command=self.clasificar_datos,
@@ -135,10 +146,10 @@ class SistemaTumoresGUI:
             frame_controles,
             text="IA: ANALIZAR IMAGEN T1wCE",
             font=("Arial", 12, "bold"),
-            bg="#f1c40f",
-            fg="black",
-            activebackground="#f39c12",
-            activeforeground="black",
+            bg=COLOR_ACCENT,
+            fg=COLOR_TEXT,
+            activebackground=COLOR_ACCENT_HOVER,
+            activeforeground=COLOR_TEXT,
             cursor="hand2",
             command=self.ia_analizar_imagen,
             height=2,
@@ -149,10 +160,10 @@ class SistemaTumoresGUI:
             frame_controles,
             text="IA: ANALIZAR CARPETA T1wCE",
             font=("Arial", 12, "bold"),
-            bg="#f1c40f",
-            fg="black",
-            activebackground="#f39c12",
-            activeforeground="black",
+            bg=COLOR_ACCENT,
+            fg=COLOR_TEXT,
+            activebackground=COLOR_ACCENT_HOVER,
+            activeforeground=COLOR_TEXT,
             cursor="hand2",
             command=self.ia_analizar_carpeta,
             height=2,
@@ -163,26 +174,28 @@ class SistemaTumoresGUI:
             fill=tk.X, padx=20, pady=20
         )
 
-        frame_nav = tk.Frame(frame_controles, bg="#34495e")
+        frame_nav = tk.Frame(frame_controles, bg=COLOR_PANEL)
         frame_nav.pack(pady=10, padx=20, fill=tk.X)
 
         tk.Label(
             frame_nav,
             text="NAVEGACION DE IMAGENES",
             font=("Arial", 11, "bold"),
-            bg="#34495e",
-            fg="white",
+            bg=COLOR_PANEL,
+            fg=COLOR_TEXT,
         ).pack(pady=(0, 10))
 
-        frame_botones_nav = tk.Frame(frame_nav, bg="#34495e")
+        frame_botones_nav = tk.Frame(frame_nav, bg=COLOR_PANEL)
         frame_botones_nav.pack()
 
         self.btn_anterior = tk.Button(
             frame_botones_nav,
             text="◄ ANTERIOR",
             font=("Arial", 10, "bold"),
-            bg="#e74c3c",
-            fg="white",
+            bg=COLOR_NAV,
+            fg=COLOR_TEXT,
+            activebackground=COLOR_NAV_HOVER,
+            activeforeground=COLOR_TEXT,
             cursor="hand2",
             command=self.imagen_anterior,
             state=tk.DISABLED,
@@ -194,8 +207,10 @@ class SistemaTumoresGUI:
             frame_botones_nav,
             text="SIGUIENTE ►",
             font=("Arial", 10, "bold"),
-            bg="#e74c3c",
-            fg="white",
+            bg=COLOR_NAV,
+            fg=COLOR_TEXT,
+            activebackground=COLOR_NAV_HOVER,
+            activeforeground=COLOR_TEXT,
             cursor="hand2",
             command=self.imagen_siguiente,
             state=tk.DISABLED,
@@ -207,8 +222,8 @@ class SistemaTumoresGUI:
             frame_nav,
             text="Imagen 0 de 0",
             font=("Arial", 10),
-            bg="#34495e",
-            fg="white",
+            bg=COLOR_PANEL,
+            fg=COLOR_TEXT,
         )
         self.label_contador.pack(pady=10)
 
@@ -224,19 +239,19 @@ class SistemaTumoresGUI:
         self.progress.pack(pady=20, padx=20)
 
     def crear_panel_estadisticas(self, parent):
-        frame_stats = tk.Frame(parent, bg="#34495e")
+        frame_stats = tk.Frame(parent, bg=COLOR_PANEL)
         frame_stats.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
 
         tk.Label(
             frame_stats,
             text="ESTADISTICAS",
             font=("Arial", 11, "bold"),
-            bg="#34495e",
-            fg="white",
+            bg=COLOR_PANEL,
+            fg=COLOR_TEXT,
         ).pack(pady=(0, 10))
 
         self.frame_stats_content = tk.Frame(
-            frame_stats, bg="#2c3e50", relief=tk.SUNKEN, bd=2
+            frame_stats, bg=COLOR_PANEL_ALT, relief=tk.SUNKEN, bd=2
         )
         self.frame_stats_content.pack(fill=tk.BOTH, expand=True)
 
@@ -244,8 +259,8 @@ class SistemaTumoresGUI:
             self.frame_stats_content,
             text="No hay datos procesados",
             font=("Consolas", 9),
-            bg="#2c3e50",
-            fg="#ecf0f1",
+            bg=COLOR_PANEL_ALT,
+            fg=COLOR_TEXT,
             justify=tk.LEFT,
             anchor="nw",
             padx=10,
@@ -254,40 +269,40 @@ class SistemaTumoresGUI:
         self.label_stats.pack(fill=tk.BOTH, expand=True)
 
     def crear_panel_visualizacion(self, parent):
-        frame_viz = tk.Frame(parent, bg="#34495e")
+        frame_viz = tk.Frame(parent, bg=COLOR_PANEL)
         frame_viz.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
         titulo_viz = tk.Label(
             frame_viz,
             text="VISUALIZACION DE TUMORES",
             font=("Arial", 16, "bold"),
-            bg="#34495e",
-            fg="white",
+            bg=COLOR_PANEL,
+            fg=COLOR_TEXT,
         )
         titulo_viz.pack(pady=10)
 
-        self.frame_canvas = tk.Frame(frame_viz, bg="white")
+        self.frame_canvas = tk.Frame(frame_viz, bg=COLOR_PANEL_ALT)
         self.frame_canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.label_inicial = tk.Label(
             self.frame_canvas,
             text="Cargue y procese datos para visualizar tumores",
             font=("Arial", 14),
-            bg="white",
-            fg="#7f8c8d",
+            bg=COLOR_PANEL_ALT,
+            fg=COLOR_MUTED,
         )
         self.label_inicial.pack(expand=True)
 
     def crear_barra_estado(self):
-        self.frame_estado = tk.Frame(self.root, bg="#34495e", height=40)
+        self.frame_estado = tk.Frame(self.root, bg=COLOR_PANEL, height=40)
         self.frame_estado.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=(0, 10))
 
         self.label_estado = tk.Label(
             self.frame_estado,
             text="Estado: Listo para comenzar",
             font=("Arial", 10),
-            bg="#34495e",
-            fg="white",
+            bg=COLOR_PANEL,
+            fg=COLOR_TEXT,
             anchor="w",
         )
         self.label_estado.pack(side=tk.LEFT, padx=10, pady=5)

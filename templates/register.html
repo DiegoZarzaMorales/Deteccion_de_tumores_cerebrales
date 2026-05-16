@@ -7,84 +7,13 @@
   <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
-  <style>
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    .register-container {
-      width: 100%;
-      max-width: 500px;
-      padding: 15px;
-    }
-    .card {
-      border: none;
-      border-radius: 10px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    }
-    .card-header {
-      background: linear-gradient(135deg, #334db3 0%, #1976d2 50%, #0e3a76 100%);
-      border-radius: 10px 10px 0 0;
-      padding: 30px 20px;
-      text-align: center;
-      border: none;
-    }
-    .card-header h2 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-      font-weight: 700;
-    }
-    .form-control {
-      border-radius: 5px;
-      padding: 12px;
-      border: 1px solid #dee2e6;
-    }
-    .form-control:focus {
-      border-color: #667eea;
-      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-    }
-    .btn-register {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      color: white;
-      font-weight: 600;
-      padding: 10px;
-      border-radius: 5px;
-    }
-    .btn-register:hover {
-      background: linear-gradient(135deg, #5568d3 0%, #6a3e91 100%);
-      color: white;
-    }
-    .login-link {
-      text-align: center;
-      margin-top: 20px;
-    }
-    .login-link a {
-      color: #667eea;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .login-link a:hover {
-      text-decoration: underline;
-    }
-    .alert {
-      border-radius: 5px;
-    }
-    .form-text {
-      font-size: 0.85rem;
-      color: #6c757d;
-    }
-  </style>
 </head>
-<body>
-  <div class="register-container">
+<body class="auth-body">
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+  <div class="auth-container auth-register page-content page-fade">
     <div class="card">
-      <div class="card-header">
-        <h2>Crear Cuenta</h2>
+      <div class="card-header auth-header">
+        <h2 class="auth-title">Crear Cuenta</h2>
       </div>
       <div class="card-body p-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -152,12 +81,12 @@
             />
           </div>
 
-          <button class="btn btn-register w-100 btn-lg" type="submit">
+          <button class="btn btn-primary w-100 btn-lg" type="submit">
             Crear Cuenta
           </button>
         </form>
 
-        <div class="login-link">
+        <div class="auth-link">
           ¿Ya tienes cuenta? <a href="{{ url_for('login') }}">Inicia sesión</a>
         </div>
       </div>
@@ -165,5 +94,6 @@
   </div>
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
