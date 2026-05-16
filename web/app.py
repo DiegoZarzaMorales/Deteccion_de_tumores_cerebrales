@@ -4,6 +4,7 @@
 # ============================================================
 
 import os
+import re
 import shutil
 import warnings
 import uuid
@@ -123,19 +124,30 @@ def resolver_modelo_web():
 
 def descargar_modelo_si_falta(model_path):
     model_url = os.environ.get("MODEL_URL")
-    if not model_url or os.path.exists(model_path):
+    if not model_url:
         return False
+
+    if os.path.exists(model_path):
+        if _modelo_valido(model_path):
+            return False
+        try:
+            os.remove(model_path)
+        except OSError:
+            return False
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     tmp_path = f"{model_path}.download"
 
     try:
-        with requests.get(model_url, stream=True, timeout=60) as response:
-            response.raise_for_status()
-            with open(tmp_path, "wb") as output:
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    if chunk:
-                        output.write(chunk)
+        url = _normalizar_drive_url(model_url)
+        if "drive.google.com" in url:
+            _descargar_google_drive(url, tmp_path)
+        else:
+            _descargar_stream(url, tmp_path)
+
+        if not _modelo_valido(tmp_path):
+            raise ValueError("Archivo de modelo invalido")
+
         os.replace(tmp_path, model_path)
         return True
     except Exception:
@@ -145,6 +157,61 @@ def descargar_modelo_si_falta(model_path):
             except OSError:
                 pass
         return False
+
+
+def _modelo_valido(path):
+    try:
+        with open(path, "rb") as file:
+            magic = file.read(4)
+        return magic.startswith(b"PK") or magic.startswith(b"\x80\x04")
+    except OSError:
+        return False
+
+
+def _normalizar_drive_url(url):
+    match = re.search(r"/file/d/([a-zA-Z0-9_-]+)", url)
+    if match:
+        file_id = match.group(1)
+        return f"https://drive.google.com/uc?export=download&id={file_id}"
+    return url
+
+
+def _descargar_stream(url, destino):
+    with requests.get(url, stream=True, timeout=120) as response:
+        response.raise_for_status()
+        with open(destino, "wb") as output:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    output.write(chunk)
+
+
+def _descargar_google_drive(url, destino):
+    session = requests.Session()
+    response = session.get(url, stream=True, timeout=120)
+    token = _extraer_confirmacion_drive(response)
+    if token:
+        response.close()
+        response = session.get(url, params={"confirm": token}, stream=True, timeout=120)
+
+    response.raise_for_status()
+    with open(destino, "wb") as output:
+        for chunk in response.iter_content(chunk_size=1024 * 1024):
+            if chunk:
+                output.write(chunk)
+
+
+def _extraer_confirmacion_drive(response):
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            return value
+
+    content_type = response.headers.get("Content-Type", "")
+    if "text/html" in content_type:
+        match = re.search(r"confirm=([0-9A-Za-z_]+)", response.text)
+        if match:
+            return match.group(1)
+
+    return None
 
 
 
