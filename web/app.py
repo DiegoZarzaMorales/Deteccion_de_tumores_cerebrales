@@ -114,10 +114,15 @@ def resolver_modelo_web():
     candidatos = [CHECKPOINT_FALLBACK, MODEL_PATH]
     for candidate in candidatos:
         if os.path.exists(candidate):
-            return candidate
+            if _modelo_valido(candidate):
+                return candidate
+            try:
+                os.remove(candidate)
+            except OSError:
+                pass
         if candidate == MODEL_PATH:
             descargar_modelo_si_falta(candidate)
-            if os.path.exists(candidate):
+            if os.path.exists(candidate) and _modelo_valido(candidate):
                 return candidate
     return MODEL_PATH
 
