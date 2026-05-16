@@ -212,7 +212,7 @@ def _extraer_confirmacion_drive(response):
 
     content_type = response.headers.get("Content-Type", "")
     if "text/html" in content_type:
-        match = re.search(r"confirm=([0-9A-Za-z_]+)", response.text)
+        match = re.search(r"confirm=([0-9A-Za-z_-]+)", response.text)
         if match:
             return match.group(1)
 
