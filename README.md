@@ -111,6 +111,14 @@ Luego abre en el navegador: `http://localhost:5000`
 - Sube un archivo `.dcm` o un `.zip` con varias T1wCE.
 -- Elige el modelo (`U-Net`) y la IA resalta la región tumoral, mostrando área aproximada, lado de la imagen y aviso de calidad.
 
+Si solo quieres levantar la web sin entrenar ni usar la parte de IA, instala las dependencias ligeras:
+
+```bash
+pip install -r requirements-web.txt
+```
+
+Con ese conjunto puedes usar autenticación, notas y la interfaz web. La ruta de predicción seguirá existiendo, pero pedirá PyTorch y el modelo entrenado si intentas usarla.
+
 <!-- YOLO support removed; resources archived in `YOLO-ARCHIVE` -->
 
 ## Autores

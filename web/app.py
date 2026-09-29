@@ -20,16 +20,11 @@ warnings.filterwarnings(
     module=r"numpy\.core\.getlimits",
 )
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
-from flask import Flask, request, render_template, redirect, url_for, flash, jsonify, session
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify, session, send_from_directory
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
 import pydicom
-
-from ml.predecir import cargar_modelo, predecir_imagen
 from .models import db, User, LoginHistory, Note
 
 # ------------------------------------------------------------
@@ -87,6 +82,19 @@ modelos = {}
 DEVICE = None
 
 
+def _import_ml_helpers():
+    """Carga las utilidades de ML solo cuando se necesitan."""
+    try:
+        from ml.predecir import cargar_modelo, predecir_imagen
+    except ImportError as exc:
+        raise RuntimeError(
+            "La funcionalidad de IA no está disponible en esta instalación. "
+            "Si solo quieres usar la plataforma web, instala requirements-web.txt."
+        ) from exc
+
+    return cargar_modelo, predecir_imagen
+
+
 def resolver_modelo_web():
     """Devuelve la ruta del modelo preferido para la app web.
 
@@ -110,7 +118,13 @@ def get_modelo(model_type="unet"):
     if model_type in modelos:
         return modelos[model_type], DEVICE
 
-    import torch
+    try: # No se necesita toch si no se entranara IA en la maquina
+        import torch # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "PyTorch no está instalado. La web puede abrir sin IA, pero la ruta /predict requiere ML."
+        ) from exc
+
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
     if model_type == "unet":
@@ -119,6 +133,7 @@ def get_modelo(model_type="unet"):
             raise FileNotFoundError(
                 f"No se encontró un modelo entrenado en {MODEL_PATH} ni en {CHECKPOINT_FALLBACK}. Ejecuta entrenar.py primero."
             )
+        cargar_modelo, _ = _import_ml_helpers()
         modelos[model_type] = cargar_modelo(model_path, device=DEVICE)
     else:
         raise ValueError("Tipo de modelo no soportado")
@@ -127,6 +142,7 @@ def get_modelo(model_type="unet"):
 
 
 def predecir_con_modelo(model, model_type, dcm_path, device):
+    _, predecir_imagen = _import_ml_helpers()
     return predecir_imagen(model, dcm_path, device=device, threshold=0.5)
 
 
@@ -136,6 +152,16 @@ def predecir_con_modelo(model, model_type, dcm_path, device):
 
 def guardar_figura_prediccion(img, mascara, mascara_prob=None):
     """Genera una imagen PNG con la predicción y devuelve la ruta relativa."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise RuntimeError(
+            "No se pudo generar la imagen de resultado porque matplotlib no está instalado. "
+            "La interfaz web puede abrir sin él, pero la ruta /predict requiere esta dependencia."
+        ) from exc
+
     fig_cols = 3 if mascara_prob is not None else 2
     fig, axes = plt.subplots(1, fig_cols, figsize=(12, 4))
 
@@ -247,7 +273,6 @@ def login():
             login_user(user, remember=remember)
             # Establecer session.permanent solo si el usuario eligió "Recuérdame".
             session.permanent = remember
-            flash(f"¡Bienvenido, {user.username}!", "success")
             return redirect(url_for("main_menu"))
         else:
             flash("Usuario o contraseña incorrectos.", "danger")
@@ -393,6 +418,12 @@ def delete_note(note_id):
     
     flash("Nota eliminada exitosamente.", "success")
     return redirect(url_for("notes"))
+
+
+@app.route('/pfp-default/<path:filename>')
+def pfp_default(filename):
+    """Sirve la imagen por defecto del perfil desde la carpeta pfp-default."""
+    return send_from_directory(os.path.join(BASE_DIR, 'pfp-default'), filename)
 
 
 @app.route("/profile", methods=["GET"])

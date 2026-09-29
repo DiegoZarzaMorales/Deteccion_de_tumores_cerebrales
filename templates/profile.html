@@ -33,7 +33,27 @@
       color: white;
       padding: 30px;
       border-radius: 10px 10px 0 0;
-      text-align: center;
+    }
+    .profile-header-content {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      text-align: left;
+    }
+    .profile-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: 18px;
+      object-fit: cover;
+      border: 3px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+    .profile-name-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     .profile-icon {
       font-size: 60px;
@@ -146,9 +166,13 @@
       <div class="col-lg-4 mb-4">
         <div class="card profile-card">
           <div class="profile-header">
-            <div class="profile-icon"></div>
-            <h2>{{ current_user.username }}</h2>
-            <p class="mb-0 text-white-50">Perfil de Usuario</p>
+            <div class="profile-header-content">
+              <img class="profile-avatar" src="{{ url_for('pfp_default', filename='Default-pfp-tumoria.png') }}" alt="Perfil de {{ current_user.username }}">
+              <div class="profile-name-block">
+                <h2 class="mb-1">{{ current_user.username }}</h2>
+                <p class="mb-0 text-white-50">Perfil de Usuario</p>
+              </div>
+            </div>
           </div>
           <div class="card-body p-4">
             <div class="info-item">
