@@ -415,8 +415,8 @@ def delete_note(note_id):
 
 @app.route('/pfp-default/<path:filename>')
 def pfp_default(filename):
-    """Sirve la imagen por defecto del perfil desde la carpeta pfp-default."""
-    return send_from_directory(os.path.join(BASE_DIR, 'pfp-default'), filename)
+    """Sirve la imagen por defecto del perfil desde la carpeta static/images/pfp-default."""
+    return send_from_directory(os.path.join(BASE_DIR, 'static', 'images', 'pfp-default'), filename)
 
 
 @app.route("/profile", methods=["GET"])
