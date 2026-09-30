@@ -65,10 +65,10 @@
 
             <form action="/predict" method="post" enctype="multipart/form-data">
               <div class="mb-3">
-                <label class="form-label" for="model_type">Modelo de IA</label>
-                <select id="model_type" class="form-select" name="model_type" title="Modelo de IA">
-                  <option value="unet" {% if selected_model == 'unet' %}selected{% endif %}>U-Net (segmentación actual)</option>
-                </select>
+                <label class="form-label d-block">Modelo de IA</label>
+                <div class="d-inline-block border rounded px-3 py-2 bg-body-secondary text-white">
+                  U-Net (Segmentación por píxeles)
+                </div>
               </div>
               <div class="mb-3">
                 <label class="form-label" for="file_input">Selecciona archivo (.dcm o .zip)</label>
@@ -99,11 +99,11 @@
 
             {% if summary %}
               <div class="card mb-3">
-                <div class="card-body">
+                <div class="card-body text-white">
                   <div class="fw-semibold mb-2">Resumen del estudio</div>
                   <div class="row g-2 small">
                     <div class="col-12 col-sm-3">
-                      <span class="text-secondary">Modelo:</span>
+                      <span class="text-white">Modelo:</span>
                       {% if summary.model_type == 'yolo26' %}
                         YOLO26
                       {% else %}
@@ -111,13 +111,13 @@
                       {% endif %}
                     </div>
                     <div class="col-12 col-sm-3">
-                      <span class="text-secondary">Imágenes analizadas:</span> {{ summary.num_images }}
+                      <span class="text-white">Imágenes analizadas:</span> {{ summary.num_images }}
                     </div>
                     <div class="col-12 col-sm-3">
-                      <span class="text-secondary">Imágenes con tumor:</span> {{ summary.num_with_tumor }}
+                      <span class="text-white">Imágenes con tumor:</span> {{ summary.num_with_tumor }}
                     </div>
                     <div class="col-12 col-sm-3">
-                      <span class="text-secondary">Volumen relativo:</span>
+                      <span class="text-white">Volumen relativo:</span>
                       {% if summary.total_area_mm2 and summary.total_area_mm2 > 0 %}
                         {{ "%.1f" % summary.total_area_mm2 }} mm²·slice
                       {% else %}
@@ -136,15 +136,23 @@
                     <img src="{{ img.src }}" class="app-result-img" alt="Predicción IA" />
                     <div class="card-body">
                       {% if img.area > 0 %}
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                          <span class="badge text-bg-danger">Tumor detectado</span>
-                          <span class="small text-secondary">Área aprox. {{ img.area }} px</span>
-                        </div>
+                        <div class="row g-0 mt-1">
+                          <div class="col-12 col-md-6"></div>
+                          <div class="col-12 col-md-5 offset-md-1">
+                            <div class="d-flex flex-column align-items-start gap-2 ps-md-4 ms-md-2">
+                              <span class="badge text-bg-danger">Tumor detectado</span>
 
-                        <div class="mt-2 small">
-                          {% if img.area_mm2 %}
-                            <div><span class="text-secondary">Tamaño estimado:</span> {{ "%.1f" % img.area_mm2 }} mm²</div>
-                          {% endif %}
+                              <div class="fs-5 fw-semibold lh-sm text-white mt-1">
+                                {% if img.area_mm2 %}
+                                  <div>Tamaño aprox. {{ "%.1f" % img.area_mm2 }} mm²</div>
+                                  <div>Tamaño estimado: {{ "%.1f" % img.area_mm2 }} mm²</div>
+                                {% else %}
+                                  <div>Área aprox. {{ img.area }} px</div>
+                                  <div>Área estimada: {{ img.area }} px</div>
+                                {% endif %}
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         {% if img.quality_warning %}
@@ -153,7 +161,17 @@
                           </div>
                         {% endif %}
                       {% else %}
-                        <span class="badge text-bg-success">Sin tumor claro</span>
+                        <div class="row g-0 mt-1">
+                          <div class="col-12 col-md-6"></div>
+                          <div class="col-12 col-md-5 offset-md-1">
+                            <div class="d-flex flex-column align-items-start gap-2 ps-md-4 ms-md-2">
+                              <span class="badge text-bg-success">No hay tumor detectado</span>
+                              <div class="fs-5 fw-semibold lh-sm text-white mt-1">
+                                No hay tumor detectado
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       {% endif %}
                     </div>
                   </div>

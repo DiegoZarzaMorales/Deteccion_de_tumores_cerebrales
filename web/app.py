@@ -162,8 +162,7 @@ def guardar_figura_prediccion(img, mascara, mascara_prob=None):
             "La interfaz web puede abrir sin él, pero la ruta /predict requiere esta dependencia."
         ) from exc
 
-    fig_cols = 3 if mascara_prob is not None else 2
-    fig, axes = plt.subplots(1, fig_cols, figsize=(12, 4))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
     axes[0].imshow(img, cmap="gray")
     axes[0].set_title("Imagen original")
@@ -173,12 +172,6 @@ def guardar_figura_prediccion(img, mascara, mascara_prob=None):
     axes[1].imshow(mascara, cmap="Reds", alpha=0.5)
     axes[1].set_title("Tumor detectado")
     axes[1].axis("off")
-
-    if mascara_prob is not None and fig_cols == 3:
-        im = axes[2].imshow(mascara_prob, cmap="hot")
-        axes[2].set_title("Mapa de probabilidad")
-        axes[2].axis("off")
-        fig.colorbar(im, ax=axes[2], fraction=0.046, pad=0.04)
 
     plt.tight_layout()
 
