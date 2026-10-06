@@ -55,6 +55,7 @@ class Note(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    patient_id = db.Column(db.String(120), nullable=True, index=True)
     title = db.Column(db.String(255), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -62,3 +63,25 @@ class Note(db.Model):
     
     def __repr__(self):
         return f'<Note {self.title}>'
+
+
+class PatientStudy(db.Model):
+    """Registro de un estudio clínico asociado a un paciente."""
+    __tablename__ = 'patient_studies'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    patient_id = db.Column(db.String(120), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    model_type = db.Column(db.String(20), nullable=False, default='unet')
+    source_file = db.Column(db.String(255), nullable=False)
+    num_images = db.Column(db.Integer, default=0)
+    num_with_tumor = db.Column(db.Integer, default=0)
+    total_area_mm2 = db.Column(db.Float, default=0.0)
+    result_summary = db.Column(db.Text, nullable=True)
+    result_images = db.Column(db.Text, nullable=True)
+
+    user = db.relationship('User', backref='patient_studies', lazy=True)
+
+    def __repr__(self):
+        return f'<PatientStudy patient_id={self.patient_id}>'

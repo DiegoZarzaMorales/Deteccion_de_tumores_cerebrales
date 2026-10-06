@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Nueva Nota - Detección de Tumores Cerebrales</title>
+  <title>Historial clínico</title>
   <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
   <style>
     .navbar-custom {
-      background: linear-gradient(135deg, #0E63E9 0%, #1976d2 50%, #0e3a76 100%);
+      background: linear-gradient(135deg, #334db3 0%, #1976d2 50%, #0e3a76 100%);
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     }
-    /* Animated background canvas */
+
     #bg-canvas {
       position: fixed;
       top: 0;
@@ -22,125 +22,107 @@
       z-index: -1;
       pointer-events: none;
     }
-    .editor-card {
-      border: none;
-      border-radius: 10px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-      background: rgba(30, 41, 59, 0.95) !important;
-    }
-    .form-control, .form-control-lg {
-      border-radius: 5px;
-      border: 1px solid #334db3;
-      background: rgba(20, 30, 48, 0.8) !important;
-      color: #e0e0e0;
-    }
-    .form-control:focus, .form-control-lg:focus {
-      border-color: #1976d2;
-      box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.25);
-      background: rgba(20, 30, 48, 0.9) !important;
-    }
-    .btn-save {
-      background: linear-gradient(135deg, #334db3 0%, #1976d2 50%, #0e3a76 100%);
-      border: none;
-      color: white;
-      font-weight: 600;
-    }
-    .btn-save:hover {
-      background: linear-gradient(135deg, #1e5db8 0%, #155ac0 50%, #0a2757 100%);
-      color: white;
-    }
-    .card-header {
-      background: rgba(30, 41, 59, 0.9) !important;
-      border-color: rgba(100, 180, 255, 0.15) !important;
-      color: white;
-    }
-    .form-label {
-      color: #b0c4de;
-      font-weight: 600;
-    }
-    .flash-toast-container {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      pointer-events: none;
-    }
-    .flash-toast {
-      min-width: 300px;
-      max-width: 420px;
-      padding: 15px 18px;
-      border-radius: 12px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
-      border-left: 5px solid #667eea;
-      background: rgba(15, 23, 42, 0.96);
-      color: #ecf3ff;
-      font-size: 0.95rem;
-      line-height: 1.4;
-      opacity: 0;
-      transform: translateX(-18px);
-      transition: opacity 0.35s ease, transform 0.35s ease;
-      pointer-events: auto;
+
+    .app-main {
       position: relative;
+      z-index: 1;
+    }
+
+    .history-card {
+      border: 1px solid rgba(107, 170, 255, 0.2);
+      background: rgba(9, 19, 37, 0.72);
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgba(10, 18, 32, 0.25);
       overflow: hidden;
+      backdrop-filter: blur(4px);
     }
-    .flash-toast.show {
-      opacity: 1;
-      transform: translateX(0);
+
+    .history-header {
+      background: linear-gradient(135deg, rgba(34, 93, 188, 0.82), rgba(18, 88, 168, 0.8));
+      color: #eaf4ff;
+      border-bottom: 1px solid rgba(162, 205, 255, 0.2);
+      font-weight: 600;
+      padding: 1rem 1.25rem;
     }
-    .flash-toast.success {
-      border-left-color: #22c55e;
+
+    .history-table {
+      background: rgba(8, 15, 27, 0.6);
+      border: 0;
+      color: #edf6ff;
+      margin: 0;
     }
-    .flash-toast.danger {
-      border-left-color: #ef4444;
+
+    .history-table thead th {
+      background: rgba(17, 37, 64, 0.9);
+      color: #dfeeff;
+      border-bottom: 1px solid rgba(153, 201, 255, 0.18);
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding-top: 0.9rem;
+      padding-bottom: 0.9rem;
     }
-    .flash-toast.warning {
-      border-left-color: #f59e0b;
+
+    .history-table tbody td {
+      color: #ebf5ff;
+      border-color: rgba(143, 177, 219, 0.12);
+      padding-top: 0.9rem;
+      padding-bottom: 0.9rem;
     }
-    .flash-toast .toast-close {
-      position: absolute;
-      top: 8px;
-      right: 10px;
-      background: transparent;
-      border: none;
-      color: rgba(255,255,255,0.8);
-      font-size: 1.1rem;
+
+    .history-table tbody tr:hover {
+      background: rgba(17, 40, 70, 0.62);
+    }
+
+    .study-row {
       cursor: pointer;
+      transition: background 0.2s ease;
     }
-    .flash-toast .toast-progress {
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      height: 3px;
-      background: linear-gradient(90deg, rgba(103, 232, 249, 0.9), rgba(96, 165, 250, 0.9));
+
+    .study-row.is-expanded {
+      background: rgba(24, 63, 112, 0.68);
+    }
+
+    .study-detail-row td {
+      background: rgba(11, 24, 42, 0.82);
+      border-top: 1px solid rgba(143, 177, 219, 0.12);
+      padding: 0;
+    }
+
+    .study-detail-box {
+      padding: 1rem 1.25rem 1.1rem;
+      color: #eaf4ff;
+      line-height: 1.6;
+    }
+
+    .study-detail-box strong {
+      color: #a8d4ff;
+    }
+
+    .study-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+
+    .result-image-preview {
+      display: block;
       width: 100%;
-      transform-origin: left center;
-      animation: toast-timer 4s linear forwards;
-    }
-    .flash-toast.success .toast-progress {
-      background: linear-gradient(90deg, rgba(34, 197, 94, 0.9), rgba(16, 185, 129, 0.9));
-    }
-    .flash-toast.danger .toast-progress {
-      background: linear-gradient(90deg, rgba(239, 68, 68, 0.9), rgba(248, 113, 113, 0.9));
-    }
-    .flash-toast.warning .toast-progress {
-      background: linear-gradient(90deg, rgba(245, 158, 11, 0.9), rgba(251, 191, 36, 0.9));
-    }
-    @keyframes toast-timer {
-      from { transform: scaleX(1); }
-      to { transform: scaleX(0); }
+      max-width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: rgba(17, 37, 64, 0.8);
+      margin: 0 auto;
     }
   </style>
 </head>
-<body>
-  <!-- Navbar con autenticación -->
+<body class="bg-body-tertiary">
   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
     <div class="container-fluid px-3 px-md-5">
       <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('main_menu') }}">
         <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="TumorIA Logo" height="40" class="me-2">
-        TumorIA - Detección de Tumores Cerebrales
+        TumorIA - Historial
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Abrir menú" title="Abrir menú">
         <span class="navbar-toggler-icon"></span>
@@ -151,7 +133,10 @@
             <a class="nav-link" href="{{ url_for('main_menu') }}">Análisis</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link active" href="{{ url_for('notes') }}">Notas</a>
+            <a class="nav-link" href="{{ url_for('notes') }}">Notas</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="{{ url_for('patient_history') }}">Historial</a>
           </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
@@ -169,110 +154,107 @@
     </div>
   </nav>
 
-  <!-- Fondo animado -->
   <canvas id="bg-canvas"></canvas>
-  <div class="flash-toast-container" id="flash-toast-container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="flash-toast {{ category }} show" role="alert" data-category="{{ category }}">
-            <button type="button" class="toast-close" aria-label="Cerrar" title="Cerrar">×</button>
-            {{ message }}
-            <div class="toast-progress"></div>
+
+  <main class="container py-4 app-main">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="h3 mb-0">Historial por paciente</h1>
+    </div>
+
+    {% if not grouped %}
+      <div class="alert alert-info">
+        No hay estudios registrados todavía.
+      </div>
+    {% else %}
+      {% for patient_id, studies in grouped.items() %}
+        <div class="history-card mb-4">
+          <div class="history-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <strong>ID del paciente:</strong> {{ patient_id }}
+            </div>
+            <a href="{{ url_for('notes', patient_id=patient_id) }}" class="btn btn-light btn-sm">
+              Ver notas del paciente
+            </a>
           </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-  </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table history-table align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Modelo</th>
+                    <th>Archivo</th>
+                    <th>Imágenes</th>
+                    <th>Con tumor</th>
+                    <th>Área total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for study in studies %}
+                    <tr class="study-row" tabindex="0" aria-expanded="false" role="button">
+                      <td>{{ study.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                      <td>{{ 'U-Net' if study.model_type == 'unet' else study.model_type }}</td>
+                      <td>{{ study.source_file }}</td>
+                      <td>{{ study.num_images }}</td>
+                      <td>{{ study.num_with_tumor }}</td>
+                      <td>{{ '%.1f' % study.total_area_mm2 }} mm²</td>
+                    </tr>
+                    <tr class="study-detail-row d-none">
+                      <td colspan="6">
+                        <div class="study-detail-box">
+                          <strong>Resultado del análisis:</strong><br>
+                          {{ study.result_summary or 'No hay un resumen disponible para este estudio.' }}
 
-  <!-- Contenido -->
-  <div class="container-fluid px-3 px-md-5 py-5">
-    <div class="row justify-content-center">
-      <div class="col-lg-8">
-        <div class="card editor-card">
-            <div class="card-header bg-light border-bottom p-4">
-            <h3 class="mb-0">Nueva Nota</h3>
-          </div>
-          <div class="card-body p-4">
-            <form method="POST">
-              {% if patient_id %}
-                <div class="mb-4">
-                  <label class="form-label fw-bold" for="patient_id_display">Paciente relacionado</label>
-                  <input
-                    class="form-control"
-                    id="patient_id_display"
-                    type="text"
-                    value="{{ patient_id }}"
-                    readonly
-                  />
-                  <input type="hidden" name="patient_id" value="{{ patient_id }}" />
-                </div>
-              {% endif %}
+                          {% set result_images = (study.result_images or '').split('|') if study.result_images else [] %}
+                          {% if result_images %}
+                            <div class="mt-3 row g-3">
+                              {% for image_src in result_images %}
+                                {% if image_src %}
+                                  <div class="col-12">
+                                    <img src="{{ image_src }}" alt="Resultado del análisis" class="result-image-preview border" />
+                                  </div>
+                                {% endif %}
+                              {% endfor %}
+                            </div>
+                          {% endif %}
 
-              <div class="mb-4">
-                <label class="form-label fw-bold" for="title">Título de la Nota</label>
-                <input 
-                  class="form-control form-control-lg" 
-                  id="title" 
-                  name="title" 
-                  type="text" 
-                  placeholder="Ej: Observaciones del caso #123"
-                  maxlength="255"
-                  required
-                  autofocus
-                />
-              </div>
-
-              <div class="mb-4">
-                <label class="form-label fw-bold" for="content">Contenido</label>
-                <textarea 
-                  class="form-control" 
-                  id="content" 
-                  name="content" 
-                  rows="12" 
-                  placeholder="Escribe tus notas clínicas aquí..."
-                  required
-                ></textarea>
-                <small class="form-text text-muted d-block mt-2">
-                  Puedes escribir observaciones, diagnósticos preliminares, recomendaciones y cualquier otra información relevante.
-                </small>
-              </div>
-
-              <div class="d-flex gap-3">
-                <button class="btn btn-save btn-lg flex-grow-1" type="submit">
-                  Guardar Nota
-                </button>
-                <a href="{{ url_for('notes') }}" class="btn btn-outline-danger btn-lg">
-                  Cancelar
-                </a>
-              </div>
-            </form>
+                          <div class="study-actions">
+                            <form method="POST" action="{{ url_for('delete_patient_study', study_id=study.id) }}" onsubmit="return confirm('¿Deseas eliminar este registro del historial?');">
+                              <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar registro</button>
+                            </form>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+      {% endfor %}
+    {% endif %}
+  </main>
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
   <script>
-    (function() {
-      const toasts = document.querySelectorAll('.flash-toast');
-      toasts.forEach((toast) => {
-        const closeButton = toast.querySelector('.toast-close');
-        const hideToast = () => {
-          toast.classList.remove('show');
-          setTimeout(() => toast.remove(), 350);
-        };
+    document.querySelectorAll('.study-row').forEach((row) => {
+      const toggleDetail = () => {
+        const detailRow = row.nextElementSibling;
+        const isExpanded = row.classList.toggle('is-expanded');
+        detailRow.classList.toggle('d-none', !isExpanded);
+        row.setAttribute('aria-expanded', String(isExpanded));
+      };
 
-        if (closeButton) {
-          closeButton.addEventListener('click', hideToast);
+      row.addEventListener('click', toggleDetail);
+      row.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleDetail();
         }
-
-        setTimeout(hideToast, 4200);
       });
-    })();
+    });
 
-    // Digital Network Background Animation
     (function() {
       const canvas = document.getElementById('bg-canvas');
       const ctx = canvas.getContext('2d');
@@ -325,7 +307,7 @@
           const progress = (line.y - vanishY) / (height - vanishY);
           const alpha = Math.max(0, Math.min(0.15, progress * 0.2));
           const glow = Math.sin(time * 0.001 + i * 0.3) * 0.05 + 0.1;
-          
+
           ctx.beginPath();
           ctx.strokeStyle = `rgba(0, 150, 255, ${alpha + glow})`;
           ctx.lineWidth = 1;
@@ -336,7 +318,7 @@
 
         gridLines.filter(l => l.type === 'v').forEach((line, i) => {
           const glow = Math.sin(time * 0.0015 + i * 0.2) * 0.03 + 0.08;
-          
+
           ctx.beginPath();
           ctx.strokeStyle = `rgba(0, 120, 255, ${glow})`;
           ctx.lineWidth = 1;
@@ -431,6 +413,7 @@
         drawGrid(time);
         drawConnections();
         drawParticles(time);
+        drawDataStreams(time);
 
         requestAnimationFrame(animate);
       }
@@ -440,3 +423,5 @@
       requestAnimationFrame(animate);
     })();
   </script>
+</body>
+</html>

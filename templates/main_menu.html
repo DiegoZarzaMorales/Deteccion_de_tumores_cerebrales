@@ -34,6 +34,9 @@
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('notes') }}">Notas</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('patient_history') }}">Historial</a>
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
               <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
@@ -78,6 +81,23 @@
                   • .zip = varias imágenes T1wCE
                 </div>
               </div>
+
+              <div class="mb-3">
+                <label class="form-label" for="patient_id_input">ID del paciente</label>
+                <input
+                  id="patient_id_input"
+                  class="form-control"
+                  type="text"
+                  name="patient_id"
+                  placeholder="Ej. HC-20481"
+                  aria-label="Identificación del paciente"
+                  required
+                />
+                <div class="form-text">
+                  Este identificador servirá para agrupar los estudios y mantener el historial clínico del paciente.
+                </div>
+              </div>
+
               <div class="d-grid">
                 <button class="btn btn-primary btn-lg" type="submit">Analizar con IA</button>
               </div>
@@ -146,7 +166,6 @@
                                 {% if img.area_mm2 %}
                                   <div>Tamaño estimado: {{ "%.1f" % img.area_mm2 }} mm²</div>
                                 {% else %}
-                                  <div>Área aprox. {{ img.area }} px</div>
                                   <div>Área estimada: {{ img.area }} px</div>
                                 {% endif %}
                               </div>
@@ -164,9 +183,9 @@
                           <div class="col-12 col-md-6"></div>
                           <div class="col-12 col-md-5 offset-md-1">
                             <div class="d-flex flex-column align-items-start gap-2 ps-md-4 ms-md-2">
-                              <span class="badge text-bg-success">No hay tumor detectado</span>
+                              <span class="badge text-bg-success">Tumor NO detectado</span>
                               <div class="fs-5 fw-semibold lh-sm text-white mt-1">
-                                No hay tumor detectado
+                                Tumor NO detectado
                               </div>
                             </div>
                           </div>

@@ -179,6 +179,9 @@
           <li class="nav-item">
             <a class="nav-link active" href="{{ url_for('notes') }}">Notas</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('patient_history') }}">Historial</a>
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
               <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
@@ -218,12 +221,25 @@
         <h1>Mis Notas</h1>
         <p class="text-secondary">Bloc de notas personal para tus observaciones clínicas</p>
       </div>
-        <div class="col-md-4 text-end">
-        <a href="{{ url_for('create_note') }}" class="btn btn-new-note btn-lg">
-          Nueva Nota
-        </a>
+      <div class="col-md-4 text-end">
+        {% if selected_patient_id %}
+          <a href="{{ url_for('create_note', patient_id=selected_patient_id) }}" class="btn btn-new-note btn-lg">
+            Nueva nota para {{ selected_patient_id }}
+          </a>
+        {% else %}
+          <a href="{{ url_for('create_note') }}" class="btn btn-new-note btn-lg">
+            Nueva Nota
+          </a>
+        {% endif %}
       </div>
     </div>
+
+    {% if selected_patient_id %}
+      <div class="alert alert-primary d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <span><strong>Paciente relacionado:</strong> {{ selected_patient_id }}</span>
+        <a href="{{ url_for('notes') }}" class="btn btn-sm btn-outline-light">Ver todas</a>
+      </div>
+    {% endif %}
 
     {% if notes %}
       <div class="row">
@@ -231,6 +247,11 @@
           <div class="col-md-6">
             <div class="card note-card">
               <div class="card-body">
+                {% if note.patient_id %}
+                  <div class="note-date mb-2">
+                    <span class="badge text-bg-primary">Paciente: {{ note.patient_id }}</span>
+                  </div>
+                {% endif %}
                 <div class="note-title">{{ note.title }}</div>
                 <div class="note-date">
                   Actualizada: {{ note.updated_at.strftime('%d/%m/%Y %H:%M') }}

@@ -26,7 +26,7 @@ from flask import Flask, request, render_template, redirect, url_for, flash, jso
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
 import pydicom
-from .models import db, User, LoginHistory, Note
+from .models import db, User, LoginHistory, Note, PatientStudy
 
 # ------------------------------------------------------------
 # Configuración de rutas, modelos
@@ -42,7 +42,6 @@ DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
-_clear_uploads_folder()
 
 
 def _ensure_runtime_directories():
@@ -72,6 +71,9 @@ def _clear_uploads_folder():
                 _remove_uploaded_path(full_path)
     except Exception:
         pass
+
+
+_clear_uploads_folder()
 
 
 app = Flask(
@@ -109,6 +111,20 @@ def load_user(user_id):
 # Crear tablas si no existen
 with app.app_context():
     db.create_all()
+    try:
+        notes_result = db.session.execute(db.text("PRAGMA table_info(notes)"))
+        note_columns = {row[1] for row in notes_result.fetchall()}
+        if 'patient_id' not in note_columns:
+            db.session.execute(db.text("ALTER TABLE notes ADD COLUMN patient_id VARCHAR(120)"))
+
+        patient_result = db.session.execute(db.text("PRAGMA table_info(patient_studies)"))
+        patient_columns = {row[1] for row in patient_result.fetchall()}
+        if 'result_images' not in patient_columns:
+            db.session.execute(db.text("ALTER TABLE patient_studies ADD COLUMN result_images TEXT"))
+
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 modelos = {}
 DEVICE = None
@@ -370,31 +386,44 @@ def logout():
 @app.route("/notes", methods=["GET"])
 @login_required
 def notes():
-    """Vista principal de notas."""
-    user_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).all()
-    return render_template("notes.html", notes=user_notes)
+    """Vista principal de notas, opcionalmente filtrada por paciente."""
+    selected_patient_id = (request.args.get("patient_id") or "").strip()
+    query = Note.query.filter_by(user_id=current_user.id)
+    if selected_patient_id:
+        query = query.filter_by(patient_id=selected_patient_id)
+    user_notes = query.order_by(Note.updated_at.desc()).all()
+    return render_template(
+        "notes.html",
+        notes=user_notes,
+        selected_patient_id=selected_patient_id,
+    )
 
 
 @app.route("/notes/create", methods=["GET", "POST"])
 @login_required
 def create_note():
-    """Crear una nueva nota."""
+    """Crear una nueva nota; opcionalmente vinculada a un paciente."""
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         content = request.form.get("content", "").strip()
-        
-        if not title or not content:
-            flash("El título y contenido son requeridos.", "danger")
-            return redirect(url_for("create_note"))
-        
-        note = Note(title=title, content=content, user_id=current_user.id)
+        patient_id = request.form.get("patient_id", "").strip()
+
+        if not content:
+            flash("El contenido es requerido.", "danger")
+            return redirect(request.referrer or url_for("notes"))
+
+        if not title:
+            title = f"Paciente: {patient_id}" if patient_id else "Nota nueva"
+
+        note = Note(title=title, content=content, user_id=current_user.id, patient_id=patient_id or None)
         db.session.add(note)
         db.session.commit()
-        
+
         flash("Nota creada exitosamente.", "success")
         return redirect(url_for("notes"))
-    
-    return render_template("create_note.html")
+
+    patient_id = request.args.get("patient_id", "").strip()
+    return render_template("create_note.html", patient_id=patient_id)
 
 
 @app.route("/notes/<int:note_id>/edit", methods=["GET", "POST"])
@@ -471,6 +500,28 @@ def index():
     return redirect(url_for("login"))
 
 
+@app.route("/history", methods=["GET"])
+@login_required
+def patient_history():
+    """Muestra el historial agrupado por paciente para el usuario autenticado."""
+    studies = PatientStudy.query.filter_by(user_id=current_user.id).order_by(PatientStudy.created_at.desc()).all()
+    grouped = {}
+    for study in studies:
+        grouped.setdefault(study.patient_id, []).append(study)
+    return render_template("history.html", grouped=grouped)
+
+
+@app.route("/history/<int:study_id>/delete", methods=["POST"])
+@login_required
+def delete_patient_study(study_id):
+    """Elimina un estudio del historial del usuario autenticado."""
+    study = PatientStudy.query.filter_by(id=study_id, user_id=current_user.id).first_or_404()
+    db.session.delete(study)
+    db.session.commit()
+    flash("Registro del historial eliminado correctamente.", "success")
+    return redirect(url_for("patient_history"))
+
+
 @app.route("/main", methods=["GET"])
 @login_required
 def main_menu():
@@ -492,6 +543,16 @@ def predict():
             "main_menu.html",
             images=None,
             error="No se envió ningún archivo",
+            summary=None,
+            selected_model=model_type,
+        )
+
+    patient_id = (request.form.get("patient_id") or "").strip()
+    if not patient_id:
+        return render_template(
+            "main_menu.html",
+            images=None,
+            error="El ID del paciente es obligatorio para guardar el historial.",
             summary=None,
             selected_model=model_type,
         )
@@ -638,6 +699,26 @@ def predict():
             summary=None,
             selected_model=model_type,
         )
+
+    if summary.num_images > 0:
+        result_image_paths = [img["src"] for img in images_out if img.get("src")]
+        study = PatientStudy(
+            user_id=current_user.id,
+            patient_id=patient_id,
+            model_type=model_type,
+            source_file=filename,
+            num_images=summary.num_images,
+            num_with_tumor=summary.num_with_tumor,
+            total_area_mm2=float(summary.total_area_mm2),
+            result_summary=(
+                f"Imágenes analizadas: {summary.num_images}; "
+                f"Con tumor: {summary.num_with_tumor}; "
+                f"Área total estimada: {float(summary.total_area_mm2):.1f} mm²"
+            ),
+            result_images='|'.join(result_image_paths) if result_image_paths else None,
+        )
+        db.session.add(study)
+        db.session.commit()
 
     return render_template(
         "main_menu.html",
