@@ -4,6 +4,7 @@
 # ============================================================
 
 import os
+import shutil
 import warnings
 import uuid
 from datetime import datetime, timedelta
@@ -41,6 +42,37 @@ DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
+_clear_uploads_folder()
+
+
+def _ensure_runtime_directories():
+    """Asegura que existan los directorios usados por la app web."""
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(RESULTS_FOLDER, exist_ok=True)
+
+
+def _remove_uploaded_path(path):
+    """Elimina un archivo temporal de uploads si existe."""
+    try:
+        if path and os.path.exists(path):
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.remove(path)
+    except Exception:
+        pass
+
+
+def _clear_uploads_folder():
+    """Borra los temporales de uploads para mantener solo resultados."""
+    try:
+        if os.path.exists(UPLOAD_FOLDER):
+            for entry in os.listdir(UPLOAD_FOLDER):
+                full_path = os.path.join(UPLOAD_FOLDER, entry)
+                _remove_uploaded_path(full_path)
+    except Exception:
+        pass
+
 
 app = Flask(
     __name__,
@@ -479,6 +511,8 @@ def predict():
         )
 
     images_out = []
+    _ensure_runtime_directories()
+    _clear_uploads_folder()
 
     class Summary:
         def __init__(self):
@@ -491,6 +525,7 @@ def predict():
 
     if ext == ".dcm":
         save_path = os.path.join(UPLOAD_FOLDER, f"upload_{uuid.uuid4().hex}.dcm")
+        _ensure_runtime_directories()
         file.save(save_path)
 
         try:
@@ -515,6 +550,7 @@ def predict():
                 }
             )
         except Exception as e:
+            _remove_uploaded_path(save_path)
             return render_template(
                 "main_menu.html",
                 images=None,
@@ -522,17 +558,19 @@ def predict():
                 summary=None,
                 selected_model=model_type,
             )
+        finally:
+            _remove_uploaded_path(save_path)
 
     elif ext == ".zip":
         import zipfile
 
         save_path = os.path.join(UPLOAD_FOLDER, f"upload_{uuid.uuid4().hex}.zip")
+        extract_dir = os.path.join(UPLOAD_FOLDER, f"zip_{uuid.uuid4().hex}")
+        _ensure_runtime_directories()
         file.save(save_path)
 
-        extract_dir = os.path.join(UPLOAD_FOLDER, f"zip_{uuid.uuid4().hex}")
-        os.makedirs(extract_dir, exist_ok=True)
-
         try:
+            os.makedirs(extract_dir, exist_ok=True)
             with zipfile.ZipFile(save_path, "r") as zf:
                 zf.extractall(extract_dir)
 
@@ -579,6 +617,8 @@ def predict():
                     continue
 
         except Exception as e:
+            _remove_uploaded_path(save_path)
+            _remove_uploaded_path(extract_dir)
             return render_template(
                 "main_menu.html",
                 images=None,
@@ -586,6 +626,9 @@ def predict():
                 summary=None,
                 selected_model=model_type,
             )
+        finally:
+            _remove_uploaded_path(save_path)
+            _remove_uploaded_path(extract_dir)
 
     else:
         return render_template(

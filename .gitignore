@@ -25,6 +25,7 @@ wheels/
 
 # Ignore local History IA predicts
 uploads/
+static/results/
 
 
 # PyTorch models
