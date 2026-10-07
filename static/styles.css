@@ -47,6 +47,28 @@ body.bg-body-tertiary {
 	display: block;
 }
 
+.btn-blue-gradient {
+	background: linear-gradient(135deg, #0f2744 0%, #17365f 50%, #0b1d33 100%);
+	border: none;
+	color: #ffffff;
+	font-weight: 600;
+	box-shadow: 0 8px 18px rgba(17, 37, 64, 0.28);
+	transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-blue-gradient:hover,
+.btn-blue-gradient:focus-visible {
+	color: #ffffff;
+	filter: brightness(1.08);
+	transform: translateY(-1px);
+	box-shadow: 0 10px 22px rgba(17, 37, 64, 0.36);
+}
+
+.btn-blue-gradient:active {
+	transform: translateY(0);
+	box-shadow: 0 6px 14px rgba(17, 37, 64, 0.24);
+}
+
 /* Accesibilidad */
 .inline-form {
 	display: inline;

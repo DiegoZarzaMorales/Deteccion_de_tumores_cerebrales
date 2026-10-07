@@ -105,6 +105,14 @@
       margin-top: 1rem;
     }
 
+    .history-search-card {
+      background: rgba(9, 19, 37, 0.72);
+      border: 1px solid rgba(107, 170, 255, 0.2);
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgba(10, 18, 32, 0.25);
+      backdrop-filter: blur(4px);
+    }
+
     .result-image-preview {
       display: block;
       width: 100%;
@@ -161,18 +169,41 @@
       <h1 class="h3 mb-0">Historial por paciente</h1>
     </div>
 
+    <div class="history-search-card p-3 p-md-4 mb-4">
+      <form method="GET" action="{{ url_for('patient_history') }}" class="row g-2 align-items-center">
+        <div class="col-12 col-md-9">
+          <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar por ID o nombre del paciente" />
+        </div>
+        <div class="col-12 col-md-3 d-grid">
+          <button type="submit" class="btn btn-blue-gradient">Buscar</button>
+        </div>
+      </form>
+    </div>
+
     {% if not grouped %}
       <div class="alert alert-info">
         No hay estudios registrados todavía.
       </div>
     {% else %}
-      {% for patient_id, studies in grouped.items() %}
+      {% for group in grouped %}
+        {% set patient_id = group.patient_id %}
+        {% set patient_name = group.patient_name %}
+        {% set studies = group.studies %}
         <div class="history-card mb-4">
           <div class="history-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-              <strong>ID del paciente:</strong> {{ patient_id }}
+            <div class="d-flex flex-column gap-2 flex-grow-1">
+              <div>
+                <strong>ID del paciente:</strong> {{ patient_id }}
+                {% if patient_name %}
+                  <span class="ms-2 badge text-bg-info">{{ patient_name }}</span>
+                {% endif %}
+              </div>
+              <form method="POST" action="{{ url_for('save_patient_name', patient_id=patient_id) }}" class="d-flex gap-2 align-items-center flex-wrap">
+                <input type="text" name="patient_name" class="form-control form-control-sm" style="max-width: 320px;" placeholder="Nombre del paciente (opcional)" value="{{ patient_name }}" />
+                <button type="submit" class="btn btn-blue-gradient btn-sm">Guardar nombre</button>
+              </form>
             </div>
-            <a href="{{ url_for('notes', patient_id=patient_id) }}" class="btn btn-light btn-sm">
+            <a href="{{ url_for('notes', patient_id=patient_id) }}" class="btn btn-blue-gradient btn-sm">
               Ver notas del paciente
             </a>
           </div>

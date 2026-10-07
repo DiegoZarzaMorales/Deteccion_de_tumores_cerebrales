@@ -119,6 +119,8 @@ with app.app_context():
 
         patient_result = db.session.execute(db.text("PRAGMA table_info(patient_studies)"))
         patient_columns = {row[1] for row in patient_result.fetchall()}
+        if 'patient_name' not in patient_columns:
+            db.session.execute(db.text("ALTER TABLE patient_studies ADD COLUMN patient_name VARCHAR(160)"))
         if 'result_images' not in patient_columns:
             db.session.execute(db.text("ALTER TABLE patient_studies ADD COLUMN result_images TEXT"))
 
@@ -390,7 +392,16 @@ def notes():
     selected_patient_id = (request.args.get("patient_id") or "").strip()
     query = Note.query.filter_by(user_id=current_user.id)
     if selected_patient_id:
-        query = query.filter_by(patient_id=selected_patient_id)
+        query = query.filter(
+            (Note.patient_id == selected_patient_id)
+            | (
+                Note.patient_id.is_(None)
+                & (
+                    Note.title.contains(selected_patient_id)
+                    | Note.content.contains(selected_patient_id)
+                )
+            )
+        )
     user_notes = query.order_by(Note.updated_at.desc()).all()
     return render_template(
         "notes.html",
@@ -420,6 +431,8 @@ def create_note():
         db.session.commit()
 
         flash("Nota creada exitosamente.", "success")
+        if patient_id:
+            return redirect(url_for("notes", patient_id=patient_id))
         return redirect(url_for("notes"))
 
     patient_id = request.args.get("patient_id", "").strip()
@@ -504,11 +517,56 @@ def index():
 @login_required
 def patient_history():
     """Muestra el historial agrupado por paciente para el usuario autenticado."""
-    studies = PatientStudy.query.filter_by(user_id=current_user.id).order_by(PatientStudy.created_at.desc()).all()
+    search_query = (request.args.get("q") or "").strip()
+    studies_query = PatientStudy.query.filter_by(user_id=current_user.id)
+    if search_query:
+        studies_query = studies_query.filter(
+            (PatientStudy.patient_id.contains(search_query))
+            | (PatientStudy.patient_name.contains(search_query))
+        )
+
+    studies = studies_query.order_by(PatientStudy.created_at.desc()).all()
     grouped = {}
     for study in studies:
-        grouped.setdefault(study.patient_id, []).append(study)
-    return render_template("history.html", grouped=grouped)
+        group = grouped.setdefault(
+            study.patient_id,
+            {
+                "patient_id": study.patient_id,
+                "patient_name": study.patient_name or "",
+                "studies": [],
+            },
+        )
+        if study.patient_name and not group["patient_name"]:
+            group["patient_name"] = study.patient_name
+        group["studies"].append(study)
+
+    return render_template("history.html", grouped=list(grouped.values()), search_query=search_query)
+
+
+@app.route("/history/<string:patient_id>/name", methods=["POST"])
+@login_required
+def save_patient_name(patient_id):
+    """Guarda o actualiza el nombre opcional de un paciente en el historial."""
+    patient_name = (request.form.get("patient_name") or "").strip()
+    studies = PatientStudy.query.filter_by(user_id=current_user.id, patient_id=patient_id).all()
+    if not studies:
+        flash("No se encontraron registros para ese paciente.", "warning")
+        return redirect(url_for("patient_history", q=patient_id))
+
+    current_name = (studies[0].patient_name or "").strip()
+    if not patient_name:
+        flash("Escribe un nombre antes de guardarlo.", "warning")
+        return redirect(url_for("patient_history", q=patient_id))
+
+    for study in studies:
+        study.patient_name = patient_name
+
+    db.session.commit()
+    if current_name:
+        flash("Nombre del paciente actualizado correctamente.", "success")
+    else:
+        flash("Nombre del paciente guardado correctamente.", "success")
+    return redirect(url_for("patient_history", q=patient_id))
 
 
 @app.route("/history/<int:study_id>/delete", methods=["POST"])
@@ -702,9 +760,11 @@ def predict():
 
     if summary.num_images > 0:
         result_image_paths = [img["src"] for img in images_out if img.get("src")]
+        existing_study = PatientStudy.query.filter_by(user_id=current_user.id, patient_id=patient_id).order_by(PatientStudy.created_at.desc()).first()
         study = PatientStudy(
             user_id=current_user.id,
             patient_id=patient_id,
+            patient_name=existing_study.patient_name if existing_study else None,
             model_type=model_type,
             source_file=filename,
             num_images=summary.num_images,

@@ -75,6 +75,7 @@ class PatientStudy(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     model_type = db.Column(db.String(20), nullable=False, default='unet')
     source_file = db.Column(db.String(255), nullable=False)
+    patient_name = db.Column(db.String(160), nullable=True, index=True)
     num_images = db.Column(db.Integer, default=0)
     num_with_tumor = db.Column(db.Integer, default=0)
     total_area_mm2 = db.Column(db.Float, default=0.0)

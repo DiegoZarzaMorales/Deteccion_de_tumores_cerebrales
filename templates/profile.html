@@ -140,6 +140,9 @@
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('notes') }}">Notas</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('patient_history') }}">Historial</a>
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
               <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
