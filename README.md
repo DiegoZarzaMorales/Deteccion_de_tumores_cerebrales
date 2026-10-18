@@ -87,8 +87,7 @@ Con esto, los scripts `entrenar.py`, `python-scripts/predecir.py`, la GUI (`pyth
 	```
 3. El mejor modelo se guardará en `models/best_model.pth`.
 
-> Nota: El soporte para YOLO fue retirado del flujo principal y los recursos (código, modelos y datasets)
-> se han archivado en la carpeta `YOLO-ARCHIVE` dentro del repositorio para referencia futura.
+ > Nota: El soporte para YOLO fue retirado del flujo principal.
 
 ### 2) Interfaz de escritorio (modo completo)
 
@@ -118,8 +117,6 @@ pip install -r requirements-web.txt
 ```
 
 Con ese conjunto puedes usar autenticación, notas y la interfaz web. La ruta de predicción seguirá existiendo, pero pedirá PyTorch y el modelo entrenado si intentas usarla.
-
-<!-- YOLO support removed; resources archived in `YOLO-ARCHIVE` -->
 
 ## Autores
 
