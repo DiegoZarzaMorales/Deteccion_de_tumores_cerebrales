@@ -20,8 +20,6 @@ warnings.filterwarnings(
     category=RuntimeWarning,
     module=r"numpy\.core\.getlimits",
 )
-
-import numpy as np
 from flask import Flask, request, render_template, redirect, url_for, flash, jsonify, session, send_from_directory
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
@@ -236,6 +234,8 @@ def guardar_figura_prediccion(img, mascara, mascara_prob=None):
 def extraer_estadisticas_dicom(dcm_path, mascara):
     """Extrae métricas básicas útiles para el clínico."""
     try:
+        import numpy as np
+
         ds = pydicom.dcmread(dcm_path)
         arr = ds.pixel_array.astype(np.float32)
     except Exception:

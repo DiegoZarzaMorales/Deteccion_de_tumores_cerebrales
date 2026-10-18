@@ -113,6 +113,31 @@
       backdrop-filter: blur(4px);
     }
 
+    .btn-solid-blue {
+      background: rgba(17, 37, 64, 0.9);
+      border: 1px solid rgba(17, 37, 64, 0.9);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 8px 18px rgba(10, 18, 32, 0.28);
+      transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-solid-blue:hover,
+    .btn-solid-blue:focus-visible {
+      color: #ffffff;
+      background: rgba(23, 49, 84, 0.96);
+      border-color: rgba(23, 49, 84, 0.96);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(10, 18, 32, 0.34);
+    }
+
+    .btn-solid-blue:active {
+      background: rgba(13, 29, 50, 0.98);
+      border-color: rgba(13, 29, 50, 0.98);
+      transform: translateY(0);
+      box-shadow: 0 6px 14px rgba(10, 18, 32, 0.24);
+    }
+
     .result-image-preview {
       display: block;
       width: 100%;
@@ -175,7 +200,7 @@
           <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar por ID o nombre del paciente" />
         </div>
         <div class="col-12 col-md-3 d-grid">
-          <button type="submit" class="btn btn-blue-gradient">Buscar</button>
+          <button type="submit" class="btn btn-solid-blue">Buscar</button>
         </div>
       </form>
     </div>
@@ -200,10 +225,10 @@
               </div>
               <form method="POST" action="{{ url_for('save_patient_name', patient_id=patient_id) }}" class="d-flex gap-2 align-items-center flex-wrap">
                 <input type="text" name="patient_name" class="form-control form-control-sm" style="max-width: 320px;" placeholder="Nombre del paciente (opcional)" value="{{ patient_name }}" />
-                <button type="submit" class="btn btn-blue-gradient btn-sm">Guardar nombre</button>
+                <button type="submit" class="btn btn-solid-blue btn-sm">Guardar nombre</button>
               </form>
             </div>
-            <a href="{{ url_for('notes', patient_id=patient_id) }}" class="btn btn-blue-gradient btn-sm">
+            <a href="{{ url_for('notes', patient_id=patient_id) }}" class="btn btn-solid-blue btn-sm">
               Ver notas del paciente
             </a>
           </div>
