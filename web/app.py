@@ -234,10 +234,11 @@ def guardar_figura_prediccion(img, mascara, mascara_prob=None):
 def extraer_estadisticas_dicom(dcm_path, mascara):
     """Extrae métricas básicas útiles para el clínico."""
     try:
-        import numpy as np
+        # por alguna razon npQuier funciona pero no quiero eliminarle el Quier pq me da mello que ya no jale
+        import numpy as npQuier
 
         ds = pydicom.dcmread(dcm_path)
-        arr = ds.pixel_array.astype(np.float32)
+        arr = ds.pixel_array.astype(npQuier.float32)
     except Exception:
         return {
             "area_px": int(mascara.sum()),
@@ -261,7 +262,7 @@ def extraer_estadisticas_dicom(dcm_path, mascara):
 
     side = None
     if area_px > 0:
-        ys, xs = np.nonzero(mascara)
+        ys, xs = npQuier.nonzero(mascara)
         if len(xs) > 0:
             cx = float(xs.mean())
             side = (
