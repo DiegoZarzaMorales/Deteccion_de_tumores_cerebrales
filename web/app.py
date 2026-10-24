@@ -589,6 +589,13 @@ def main_menu():
     )
 
 
+@app.route("/help", methods=["GET"])
+@login_required
+def help_page():
+    """Muestra la guía de uso y las preguntas frecuentes."""
+    return render_template("help.html")
+
+
 @app.route("/predict", methods=["POST"])
 @login_required
 def predict():

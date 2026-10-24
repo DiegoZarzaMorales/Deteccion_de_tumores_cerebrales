@@ -37,6 +37,9 @@
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('patient_history') }}">Historial</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('help_page') }}">Ayuda</a>
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
               <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
@@ -68,13 +71,17 @@
 
             <form action="/predict" method="post" enctype="multipart/form-data">
               <div class="mb-3">
-                <label class="form-label d-block">Modelo de IA</label>
+                <label class="form-label d-block">
+                  Modelo de IA
+                </label>
                 <div class="d-inline-block border rounded px-3 py-2 bg-body-secondary text-white">
                   U-Net (Segmentación por píxeles)
                 </div>
               </div>
               <div class="mb-3">
-                <label class="form-label" for="file_input">Selecciona archivo (.dcm o .zip)</label>
+                <label class="form-label" for="file_input">
+                  Selecciona archivo (.dcm o .zip)
+                </label>
                 <input id="file_input" class="form-control" type="file" name="file" accept=".dcm,.zip" title="Selecciona un archivo DICOM (.dcm) o un ZIP con imágenes" placeholder="Selecciona un archivo .dcm o .zip" aria-label="Archivo de imagen DICOM o ZIP" required />
                 <div class="form-text">
                   • .dcm = una sola imagen T1wCE<br>
@@ -108,6 +115,7 @@
                 <strong>Error:</strong> {{ error }}
               </div>
             {% endif %}
+
           </div>
         </div>
 
@@ -148,6 +156,12 @@
                 </div>
               </div>
             {% endif %}
+
+            <div class="alert alert-warning mb-3" role="alert">
+              <strong>Aviso importante:</strong> este resultado es una estimación generada
+              por inteligencia artificial y no constituye un diagnóstico médico. Debe ser
+              interpretado por personal sanitario cualificado.
+            </div>
 
             <div class="row g-3">
               {% for img in images %}
@@ -204,7 +218,6 @@
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
   <script>
- 
   // Digital Network Background Animation
   (function() {
     const canvas = document.getElementById('bg-canvas');

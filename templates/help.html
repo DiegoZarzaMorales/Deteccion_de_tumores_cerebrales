@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ayuda - TumorIA</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <style>
+    .navbar-custom {
+      background: linear-gradient(135deg, #334db3 0%, #1976d2 50%, #0e3a76 100%);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body class="bg-body-tertiary">
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid px-3 px-md-5">
+      <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('main_menu') }}">
+        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="TumorIA Logo" height="40" class="me-2">
+        TumorIA - Detección de Tumores Cerebrales
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        aria-label="Abrir menú" title="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main_menu') }}">Análisis</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('notes') }}">Notas</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('patient_history') }}">Historial</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="{{ url_for('help_page') }}">Ayuda</a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown"
+              role="button" data-bs-toggle="dropdown">
+              <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}"
+                alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
+              {{ current_user.username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{{ url_for('profile') }}">Mi Perfil</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Cerrar Sesión</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+  <main class="container-fluid px-3 px-md-5 py-4 app-main">
+    <div class="row justify-content-center">
+      <div class="col-12 col-xl-10">
+        <div class="card shadow-sm">
+          <div class="card-body p-4 p-md-5">
+            <h1 class="h3 mb-2 text-center">Guía rápida y preguntas frecuentes</h1>
+            <p class="text-secondary text-center mb-4">
+              Información sencilla para utilizar TumorIA y comprender sus resultados.
+            </p>
+
+            <div class="alert alert-info" role="note">
+              <strong>Cómo utilizar la aplicación:</strong>
+              <ol class="mb-0 mt-2">
+                <li>Selecciona una imagen DICOM <code>.dcm</code> o un archivo <code>.zip</code>.</li>
+                <li>Introduce el ID del paciente.</li>
+                <li>Pulsa <strong>Analizar con IA</strong> y revisa el resultado.</li>
+              </ol>
+            </div>
+
+            <div class="accordion mt-4" id="faqAccordion">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-files">
+                  <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-files" aria-expanded="true" aria-controls="faq-files">
+                    ¿Qué archivo puedo subir?
+                    <span class="ms-2 text-info" data-bs-toggle="tooltip"
+                      title="DICOM es un formato utilizado para guardar imágenes médicas."
+                      aria-label="Información sobre DICOM">?</span>
+                  </button>
+                </h2>
+                <div id="faq-files" class="accordion-collapse collapse show"
+                  aria-labelledby="faq-heading-files" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Puedes subir una imagen individual con extensión <code>.dcm</code> o un
+                    archivo <code>.zip</code> que contenga varias imágenes DICOM T1wCE.
+                    T1wCE es el tipo de estudio que acepta esta aplicación.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-model">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-model" aria-expanded="false" aria-controls="faq-model">
+                    ¿Qué modelo utiliza la aplicación?
+                  </button>
+                </h2>
+                <div id="faq-model" class="accordion-collapse collapse"
+                  aria-labelledby="faq-heading-model" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    La aplicación utiliza U-Net, un modelo de inteligencia artificial que
+                    identifica y resalta posibles regiones tumorales en la imagen.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-result">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-result" aria-expanded="false" aria-controls="faq-result">
+                    ¿Qué significa el resultado del análisis?
+                  </button>
+                </h2>
+                <div id="faq-result" class="accordion-collapse collapse"
+                  aria-labelledby="faq-heading-result" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    La zona roja representa el área que el modelo considera sospechosa.
+                    “Tumor detectado” indica una estimación positiva del modelo y
+                    “Tumor no detectado” indica que no encontró una región suficiente para
+                    marcarla. Ninguno de los dos resultados confirma ni descarta por sí solo
+                    una enfermedad.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-measurement">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-measurement" aria-expanded="false" aria-controls="faq-measurement">
+                    ¿Qué significa el tamaño estimado?
+                  </button>
+                </h2>
+                <div id="faq-measurement" class="accordion-collapse collapse"
+                  aria-labelledby="faq-heading-measurement" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    El área expresada en <code>mm²</code> es una estimación calculada a partir
+                    de los píxeles marcados por el modelo. No equivale al volumen de un tumor
+                    ni sustituye una medición clínica.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-quality">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-quality" aria-expanded="false" aria-controls="faq-quality">
+                    ¿Qué hago si aparece un aviso de calidad?
+                  </button>
+                </h2>
+                <div id="faq-quality" class="accordion-collapse collapse"
+                  aria-labelledby="faq-heading-quality" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Comprueba que la imagen sea un DICOM T1wCE válido y que el archivo no esté
+                    dañado. Si el aviso continúa, solicita ayuda al personal responsable del
+                    estudio y no tomes decisiones médicas basándote únicamente en este resultado.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-diagnosis">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-diagnosis" aria-expanded="false" aria-controls="faq-diagnosis">
+                    ¿La aplicación proporciona un diagnóstico médico?
+                  </button>
+                </h2>
+                <div id="faq-diagnosis" class="accordion-collapse collapse"
+                  aria-labelledby="faq-heading-diagnosis" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    No. Esta aplicación es una herramienta de apoyo para la visualización y el
+                    análisis preliminar de imágenes. El resultado debe ser interpretado por un
+                    radiólogo, neurólogo u otro profesional sanitario cualificado.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-history">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-history" aria-expanded="false" aria-controls="faq-history">
+                    ¿Se guardan los resultados?
+                  </button>
+                </h2>
+                <div id="faq-history" class="accordion-collapse collapse"
+                  aria-labelledby="faq-heading-history" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    El estudio puede quedar asociado al ID del paciente en el historial de la
+                    cuenta. Utiliza únicamente los datos necesarios y sigue las políticas de
+                    privacidad de tu institución.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-warning mt-4 mb-0" role="alert">
+              <strong>Aviso importante:</strong> este resultado es una estimación generada
+              por inteligencia artificial y no constituye un diagnóstico médico. Debe ser
+              interpretado por personal sanitario cualificado.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+  <script>
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+      new bootstrap.Tooltip(element);
+    });
+  </script>
+  <script src="{{ url_for('static', filename='background-animation.js') }}"></script>
+</body>
+</html>
