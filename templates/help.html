@@ -72,9 +72,9 @@
             <div class="alert alert-info" role="note">
               <strong>Cómo utilizar la aplicación:</strong>
               <ol class="mb-0 mt-2">
-                <li>Selecciona una imagen DICOM <code>.dcm</code> o un archivo <code>.zip</code>.</li>
-                <li>Introduce el ID del paciente.</li>
-                <li>Pulsa <strong>Analizar con IA</strong> y revisa el resultado.</li>
+                <li>Seleccione una imagen DICOM <code>.dcm</code> o un archivo <code>.zip</code>.</li>
+                <li>Introduzca el ID del paciente.</li>
+                <li>Pulse <strong>Analizar con IA</strong> y revise el resultado (El resultado y sus datos correspondientes quedarán guardados en el historial del respectivo paciente).</li>
               </ol>
             </div>
 
@@ -92,7 +92,7 @@
                 <div id="faq-files" class="accordion-collapse collapse show"
                   aria-labelledby="faq-heading-files" data-bs-parent="#faqAccordion">
                   <div class="accordion-body">
-                    Puedes subir una imagen individual con extensión <code>.dcm</code> o un
+                    Puede subir una imagen individual con extensión <code>.dcm</code> o un
                     archivo <code>.zip</code> que contenga varias imágenes DICOM T1wCE.
                     T1wCE es el tipo de estudio que acepta esta aplicación.
                   </div>
@@ -110,7 +110,8 @@
                   aria-labelledby="faq-heading-model" data-bs-parent="#faqAccordion">
                   <div class="accordion-body">
                     La aplicación utiliza U-Net, un modelo de inteligencia artificial que
-                    identifica y resalta posibles regiones tumorales en la imagen.
+                    identifica y resalta posibles regiones tumorales en la imagen analizando
+                    pixel a pixel la imagen proporcionada por el usuario.
                   </div>
                 </div>
               </div>
@@ -145,8 +146,8 @@
                   aria-labelledby="faq-heading-measurement" data-bs-parent="#faqAccordion">
                   <div class="accordion-body">
                     El área expresada en <code>mm²</code> es una estimación calculada a partir
-                    de los píxeles marcados por el modelo. No equivale al volumen de un tumor
-                    ni sustituye una medición clínica.
+                    de los píxeles marcados por el modelo. No equivale a un diagnostico medico
+                    profesional.
                   </div>
                 </div>
               </div>
@@ -161,9 +162,9 @@
                 <div id="faq-quality" class="accordion-collapse collapse"
                   aria-labelledby="faq-heading-quality" data-bs-parent="#faqAccordion">
                   <div class="accordion-body">
-                    Comprueba que la imagen sea un DICOM T1wCE válido y que el archivo no esté
-                    dañado. Si el aviso continúa, solicita ayuda al personal responsable del
-                    estudio y no tomes decisiones médicas basándote únicamente en este resultado.
+                    Compruebe que la imagen sea un DICOM T1wCE válido y que el archivo no esté
+                    dañado. Si el aviso continúa, solicite ayuda al personal responsable del
+                    estudio y no tome decisiones médicas basándose únicamente en este resultado.
                   </div>
                 </div>
               </div>
@@ -196,8 +197,7 @@
                   aria-labelledby="faq-heading-history" data-bs-parent="#faqAccordion">
                   <div class="accordion-body">
                     El estudio puede quedar asociado al ID del paciente en el historial de la
-                    cuenta. Utiliza únicamente los datos necesarios y sigue las políticas de
-                    privacidad de tu institución.
+                    cuenta.
                   </div>
                 </div>
               </div>
@@ -206,7 +206,7 @@
             <div class="alert alert-warning mt-4 mb-0" role="alert">
               <strong>Aviso importante:</strong> este resultado es una estimación generada
               por inteligencia artificial y no constituye un diagnóstico médico. Debe ser
-              interpretado por personal sanitario cualificado.
+              interpretado por personal médico cualificado.
             </div>
           </div>
         </div>

@@ -108,6 +108,29 @@
     }
   }
 
+  function drawDataStreams(time) {
+    const streamCount = 5;
+    for (let i = 0; i < streamCount; i += 1) {
+      const progress = ((time * 0.0005 + i * 0.2) % 1);
+      const x = (width * 0.2) + (i * width * 0.15);
+      const y = progress * height * 1.5 - height * 0.25;
+      const alpha = Math.sin(progress * Math.PI) * 0.6;
+
+      if (alpha > 0.1) {
+        ctx.beginPath();
+        const gradient = ctx.createLinearGradient(x, y - 50, x, y + 50);
+        gradient.addColorStop(0, 'rgba(0, 200, 255, 0)');
+        gradient.addColorStop(0.5, `rgba(100, 220, 255, ${alpha})`);
+        gradient.addColorStop(1, 'rgba(0, 200, 255, 0)');
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 2;
+        ctx.moveTo(x, y - 50);
+        ctx.lineTo(x, y + 50);
+        ctx.stroke();
+      }
+    }
+  }
+
   function animate(time) {
     const background = ctx.createLinearGradient(0, 0, 0, height);
     background.addColorStop(0, '#020817');
@@ -118,6 +141,7 @@
     drawGrid(time);
     drawConnections();
     drawParticles();
+    drawDataStreams(time);
     window.requestAnimationFrame(animate);
   }
 
