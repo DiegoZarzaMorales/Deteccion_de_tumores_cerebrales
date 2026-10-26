@@ -27,6 +27,7 @@ from torch.utils.data import Dataset, DataLoader
 import cv2
 from pathlib import Path
 import random
+import re
 
 
 class BraTSDataset(Dataset):
@@ -39,12 +40,22 @@ class BraTSDataset(Dataset):
         augment: Si True, aplica aumentos aleatorios a imagen y máscara
         size: Tamaño de redimensionamiento (default: 256x256)
     """
-    def __init__(self, root_dir, modality='T1wCE', augment=False, size=256, data_list=None, verbose=True):
+    def __init__(
+        self,
+        root_dir,
+        modality='T1wCE',
+        augment=False,
+        size=256,
+        data_list=None,
+        verbose=True,
+        hdf5_image_channel=2,
+    ):
         self.root_dir = Path(root_dir)
         self.modality = modality
         self.augment = augment
         self.size = size
         self.verbose = verbose
+        self.hdf5_image_channel = hdf5_image_channel
         self._nifti_cache = {}
         self.data_list = data_list if data_list is not None else self._cargar_lista_archivos()
 
@@ -54,10 +65,75 @@ class BraTSDataset(Dataset):
         if path not in self._nifti_cache:
             self._nifti_cache[path] = nib.load(path)
         return self._nifti_cache[path]
+
+    def _cargar_hdf5(self, path):
+        """Carga una imagen y su máscara desde un archivo HDF5 BraTS."""
+        try:
+            import h5py
+        except ImportError as exc:
+            raise RuntimeError(
+                "Para usar datasets HDF5 se necesita h5py. "
+                "Instálelo con: pip install h5py"
+            ) from exc
+
+        with h5py.File(path, "r") as h5_file:
+            datasets = {}
+
+            def collect_datasets(name, value):
+                if isinstance(value, h5py.Dataset):
+                    datasets[name.lower()] = value[()]
+
+            h5_file.visititems(collect_datasets)
+
+        if not datasets:
+            raise ValueError(f"El archivo HDF5 no contiene datasets: {path}")
+
+        image = next(
+            (value for name, value in datasets.items() if "image" in name or "img" in name),
+            None,
+        )
+        mask = next(
+            (value for name, value in datasets.items() if "mask" in name or "label" in name),
+            None,
+        )
+
+        if image is None or mask is None:
+            arrays = list(datasets.values())
+            if len(arrays) >= 2:
+                image, mask = arrays[0], arrays[1]
+
+        if image is None or mask is None:
+            raise ValueError(
+                f"No se pudieron identificar imagen y máscara en el HDF5: {path}. "
+                f"Datasets encontrados: {list(datasets)}"
+            )
+
+        image = np.asarray(image, dtype=np.float32)
+        mask = np.asarray(mask, dtype=np.float32)
+        if image.ndim == 3:
+            if image.shape[-1] <= self.hdf5_image_channel:
+                raise ValueError(
+                    f"La imagen HDF5 no tiene el canal T1ce "
+                    f"{self.hdf5_image_channel}: {path}"
+                )
+            image = image[..., self.hdf5_image_channel]
+        if mask.ndim == 3:
+            mask = np.any(mask > 0, axis=-1).astype(np.float32)
+        if image.ndim != 2 or mask.ndim != 2:
+            raise ValueError(
+                f"Se esperaban imagen y máscara 2D después de seleccionar T1ce: {path}"
+            )
+
+        return image, (mask > 0).astype(np.float32)
         
     def _cargar_lista_archivos(self):
-        """Carga la lista de todos los archivos DICOM disponibles"""
+        """Carga muestras DICOM, NIfTI o HDF5 disponibles."""
         data_list = []
+
+        hdf5_files = sorted(
+            set(self.root_dir.rglob("*.h5")) | set(self.root_dir.rglob("*.hdf5"))
+        )
+        data_list.extend(("hdf5", path) for path in hdf5_files)
         
         # Buscar todas las carpetas de pacientes
         for patient_folder in self.root_dir.iterdir():
@@ -135,8 +211,11 @@ class BraTSDataset(Dataset):
     def __getitem__(self, idx):
         item = self.data_list[idx]
 
+        if isinstance(item, tuple) and item[0] == 'hdf5':
+            _, hdf5_path = item
+            img, mask = self._cargar_hdf5(hdf5_path)
         # Si el item es una tupla creada a partir de NIfTI
-        if isinstance(item, tuple) and item[0] == 'nifti':
+        elif isinstance(item, tuple) and item[0] == 'nifti':
             _, img_path, seg_path, z = item
             img_obj = self._obtener_nifti(img_path)
             seg_obj = self._obtener_nifti(seg_path)
@@ -230,7 +309,7 @@ def cargar_o_construir_indice_dataset(root_dir, modality='T1wCE', verbose=True, 
 
             if (
                 isinstance(cache_data, dict)
-                and cache_data.get('version') == 1
+                and cache_data.get('version') == 2
                 and cache_data.get('root_dir') == str(root_path.resolve())
                 and cache_data.get('modality') == modality
                 and isinstance(cache_data.get('data_list'), list)
@@ -250,7 +329,7 @@ def cargar_o_construir_indice_dataset(root_dir, modality='T1wCE', verbose=True, 
             with open(cache_path, 'wb') as cache_file:
                 pickle.dump(
                     {
-                        'version': 1,
+                        'version': 2,
                         'root_dir': str(root_path.resolve()),
                         'modality': modality,
                         'data_list': data_list,
@@ -278,13 +357,29 @@ def crear_dataloaders(root_dir, batch_size=4, train_split=0.8, num_workers=2, pr
             "Revisa que la ruta apunte a BraTS-PEDs-v1/Training o a una carpeta con pacientes BraTS-PED."
         )
     
-    # Split train/val
-    train_size = int(train_split * len(full_dataset))
-    val_size = len(full_dataset) - train_size
-    indices = list(range(len(full_dataset)))
-    random.shuffle(indices)
-    train_indices = indices[:train_size]
-    val_indices = indices[train_size:]
+    # Separar por volumen/paciente para no mezclar cortes relacionados entre splits.
+    groups = {}
+    for index, item in enumerate(full_data_list):
+        if isinstance(item, tuple) and item[0] == "hdf5":
+            match = re.search(r"volume_(\d+)_", Path(item[1]).name.lower())
+            group_key = f"hdf5-volume-{match.group(1)}" if match else str(item[1])
+        elif isinstance(item, tuple) and item[0] == "nifti":
+            group_key = str(item[1])
+        else:
+            group_key = str(Path(item).parent.parent)
+        groups.setdefault(group_key, []).append(index)
+
+    group_keys = list(groups)
+    random.shuffle(group_keys)
+    train_group_count = max(1, int(train_split * len(group_keys)))
+    if len(group_keys) > 1:
+        train_group_count = min(train_group_count, len(group_keys) - 1)
+    train_indices = [
+        index for key in group_keys[:train_group_count] for index in groups[key]
+    ]
+    val_indices = [
+        index for key in group_keys[train_group_count:] for index in groups[key]
+    ]
 
     train_dataset = torch.utils.data.Subset(
         BraTSDataset(
@@ -310,24 +405,28 @@ def crear_dataloaders(root_dir, batch_size=4, train_split=0.8, num_workers=2, pr
     # Dataloaders (optimización: pin_memory, persistent_workers, prefetch_factor)
     pin_memory_flag = True if torch.cuda.is_available() else False
 
+    loader_options = {
+        "num_workers": num_workers,
+        "pin_memory": pin_memory_flag,
+    }
+    if num_workers > 0:
+        loader_options.update(
+            persistent_workers=persistent_workers,
+            prefetch_factor=prefetch_factor,
+        )
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
-        pin_memory=pin_memory_flag,
-        persistent_workers=persistent_workers if num_workers > 0 else False,
-        prefetch_factor=prefetch_factor if num_workers > 0 else 2,
+        **loader_options,
     )
 
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin_memory_flag,
-        persistent_workers=persistent_workers if num_workers > 0 else False,
-        prefetch_factor=prefetch_factor if num_workers > 0 else 2,
+        **loader_options,
     )
     
     print(f"\nDataloaders creados:")

@@ -1,10 +1,8 @@
 # 🧠 Guía de Entrenamiento - Deep Learning para Detección de Tumores
 
-> Nota: El soporte para YOLO fue retirado del flujo principal; los recursos (código, modelos y datasets)
-> se retiraron del flujo principal.
-
 ## 📋 ¿Qué hace cada archivo?
-
+## Codigo Joel perzonalizado test:
+'python entrenar.py --data-dir "C:\Users\ElZuk\MRI-IA-Training\data\raw" --device cuda --epochs 1 --batch-size 16 --learning-rate 0.00001 --num-workers 2 --persistent-workers --prefetch-factor 2 --checkpoint-every 1'
 ### 1. **modelo_unet.py**
 - Contiene la arquitectura U-Net (red neuronal para segmentación)
 - U-Net es el estándar en imágenes médicas
@@ -150,7 +148,10 @@ Abre tu navegador en: http://localhost:6006
 
 - **Empieza con pocas épocas (10-20)** para probar
 - **Monitorea el Dice Score**: si no mejora, ajusta learning rate
-- **Guarda checkpoints**: no perderás progreso si se interrumpe
+- **Guarda checkpoints**: no perderás progreso si se interrumpe. Si utiliza
+  `--checkpoint-every` con un valor mayor que 10, se conserva únicamente el
+  checkpoint más reciente del intervalo. Por ejemplo, con `--checkpoint-every 30`,
+  al guardar la época 60 se elimina el checkpoint de la época 30.
 - **Valida siempre**: asegúrate que no haya overfitting
 
 ---

@@ -53,6 +53,8 @@ class CombinedLoss(nn.Module):
         self.dice_weight = dice_weight
     
     def forward(self, pred, target):
+        pred = pred.float()
+        target = target.float()
         bce_loss = self.bce(pred, target)
         dice_loss = self.dice(pred, target)
         return self.bce_weight * bce_loss + self.dice_weight * dice_loss
@@ -86,6 +88,7 @@ def entrenar_epoch(modelo, dataloader, criterion, optimizer, device):
     modelo.train()
     epoch_loss = 0
     epoch_metrics = {'dice': 0, 'iou': 0, 'accuracy': 0}
+    valid_batches = 0
     amp_enabled = str(device).startswith('cuda')
     scaler = getattr(entrenar_epoch, '_scaler', None)
     if scaler is None or scaler.is_enabled() != amp_enabled:
@@ -102,26 +105,36 @@ def entrenar_epoch(modelo, dataloader, criterion, optimizer, device):
             outputs = modelo(imgs)
             loss = criterion(outputs, masks)
 
+        if not torch.isfinite(loss):
+            print(f"  Advertencia: pérdida no finita en el batch {pbar.n}; se omite.")
+            optimizer.zero_grad(set_to_none=True)
+            continue
+
         if amp_enabled:
             scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(modelo.parameters(), max_norm=1.0)
             scaler.step(optimizer)
             scaler.update()
         else:
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(modelo.parameters(), max_norm=1.0)
             optimizer.step()
         
         with torch.no_grad():
             metrics = calcular_metricas(outputs, masks)
             epoch_loss += loss.item()
+            valid_batches += 1
             for key in epoch_metrics:
                 epoch_metrics[key] += metrics[key]
         
         pbar.set_postfix({'loss': f'{loss.item():.4f}', 'dice': f"{metrics['dice']:.4f}"})
     
-    num_batches = len(dataloader)
-    epoch_loss /= num_batches
+    if valid_batches == 0:
+        raise RuntimeError("No se pudo completar ningún batch de entrenamiento con pérdida finita.")
+    epoch_loss /= valid_batches
     for key in epoch_metrics:
-        epoch_metrics[key] /= num_batches
+        epoch_metrics[key] /= valid_batches
     
     return epoch_loss, epoch_metrics
 
@@ -131,26 +144,36 @@ def validar_epoch(modelo, dataloader, criterion, device):
     modelo.eval()
     epoch_loss = 0
     epoch_metrics = {'dice': 0, 'iou': 0, 'accuracy': 0}
+    valid_batches = 0
     amp_enabled = str(device).startswith('cuda')
     
     with torch.no_grad():
-        for imgs, masks in dataloader:
+        for batch_index, (imgs, masks) in enumerate(dataloader):
             imgs = imgs.to(device, non_blocking=True)
             masks = masks.to(device, non_blocking=True)
             
             with torch.amp.autocast(device_type='cuda', enabled=amp_enabled):
                 outputs = modelo(imgs)
                 loss = criterion(outputs, masks)
-            
+
+            if not torch.isfinite(loss):
+                print(
+                    f"  Advertencia: pérdida de validación no finita "
+                    f"en el batch {batch_index}; se omite."
+                )
+                continue
+
             metrics = calcular_metricas(outputs, masks)
             epoch_loss += loss.item()
+            valid_batches += 1
             for key in epoch_metrics:
                 epoch_metrics[key] += metrics[key]
     
-    num_batches = len(dataloader)
-    epoch_loss /= num_batches
+    if valid_batches == 0:
+        raise RuntimeError("No se pudo completar ningún batch de validación con pérdida finita.")
+    epoch_loss /= valid_batches
     for key in epoch_metrics:
-        epoch_metrics[key] /= num_batches
+        epoch_metrics[key] /= valid_batches
     
     return epoch_loss, epoch_metrics
 
@@ -262,14 +285,22 @@ def entrenar(
         
         # Guardar un checkpoint intermedio cada N épocas
         if checkpoint_every_n_epochs and (epoch + 1) % checkpoint_every_n_epochs == 0:
+            checkpoint_path = checkpoint_dir / f'checkpoint_epoch_{epoch+1}.pth'
             torch.save(
                 {
                     'epoch': epoch,
                     'model_state_dict': modelo.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 },
-                checkpoint_dir / f'checkpoint_epoch_{epoch+1}.pth',
+                checkpoint_path,
             )
+            if checkpoint_every_n_epochs > 10:
+                previous_epoch = epoch + 1 - checkpoint_every_n_epochs
+                previous_checkpoint = (
+                    checkpoint_dir / f'checkpoint_epoch_{previous_epoch}.pth'
+                )
+                if previous_checkpoint.exists():
+                    previous_checkpoint.unlink()
     
     writer.close()
     

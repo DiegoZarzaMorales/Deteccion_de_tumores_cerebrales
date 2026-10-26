@@ -89,6 +89,18 @@ Con esto, los scripts `entrenar.py`, `python-scripts/predecir.py`, la GUI (`pyth
 
  > Nota: El soporte para YOLO fue retirado del flujo principal.
 
+El cargador también admite el formato HDF5 de BraTS 2020 (`.h5`/`.hdf5`).
+Para entrenar con una carpeta que contenga esos archivos:
+
+```bash
+python entrenar.py --data-dir "C:\ruta\a\MRI-IA-Training\data\raw"
+```
+
+En los archivos HDF5 de BraTS 2020 se utiliza el canal T1ce de `image` y
+se combinan los canales de `mask` para formar una máscara binaria de
+segmentación. La división de entrenamiento y validación se realiza por
+volumen, evitando mezclar cortes del mismo volumen entre ambos grupos.
+
 ### 2) Interfaz de escritorio (modo completo)
 
 ```bash
