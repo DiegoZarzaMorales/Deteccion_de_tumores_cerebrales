@@ -918,7 +918,6 @@ def predict():
             num_with_tumor=summary.num_with_tumor,
             total_area_mm2=float(summary.total_area_mm2),
             result_summary=(
-                f"Pesos: {selected_weights}; "
                 f"Imágenes analizadas: {summary.num_images}; "
                 f"Con tumor: {summary.num_with_tumor}; "
                 f"Área total estimada: {float(summary.total_area_mm2):.1f} mm²"
