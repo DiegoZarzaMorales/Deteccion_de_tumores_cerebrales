@@ -158,7 +158,7 @@
           </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
-              <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
+              <img src="{{ user_avatar_url() }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
               {{ current_user.username }}
             </a>
             <ul class="dropdown-menu dropdown-menu-end">

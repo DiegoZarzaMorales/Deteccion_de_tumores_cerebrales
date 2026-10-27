@@ -18,6 +18,10 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # deferred evita cargar el BLOB en cada request (navbar, etc.)
+    profile_image = db.deferred(db.Column(db.LargeBinary, nullable=True))
+    profile_image_mime = db.Column(db.String(64), nullable=True)
+    profile_image_updated_at = db.Column(db.DateTime, nullable=True)
     
     # Relaciones
     login_history = db.relationship('LoginHistory', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -30,6 +34,10 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Verifica la contraseña."""
         return check_password_hash(self.password_hash, password)
+
+    @property
+    def has_profile_image(self):
+        return bool(self.profile_image_mime and self.profile_image_updated_at)
     
     def __repr__(self):
         return f'<User {self.username}>'

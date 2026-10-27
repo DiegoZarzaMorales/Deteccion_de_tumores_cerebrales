@@ -20,8 +20,20 @@ warnings.filterwarnings(
     category=RuntimeWarning,
     module=r"numpy\.core\.getlimits",
 )
-from flask import Flask, request, render_template, redirect, url_for, flash, jsonify, session, send_from_directory
+from flask import (
+    Flask,
+    request,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+    session,
+    send_from_directory,
+    Response,
+)
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
+from werkzeug.utils import secure_filename
 
 import pydicom
 from .models import db, User, LoginHistory, Note, PatientStudy
@@ -32,10 +44,8 @@ from .models import db, User, LoginHistory, Note, PatientStudy
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
-
-# AQUI SE INDICA EL MODELO A USARSE EN A PREDICCION, SI NO EXISTE SE USARÁ EL MODELO DE RESPALDO (CHECKPOINT_FALLBACK)
-CHECKPOINT_FALLBACK = os.path.join(BASE_DIR, "models", "epoch_checkpoints", "checkpoint_epoch_80.pth")
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+MODEL_PATH = os.path.join(MODELS_DIR, "best_model.pth")
 DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -122,9 +132,51 @@ with app.app_context():
         if 'result_images' not in patient_columns:
             db.session.execute(db.text("ALTER TABLE patient_studies ADD COLUMN result_images TEXT"))
 
+        users_result = db.session.execute(db.text("PRAGMA table_info(users)"))
+        user_columns = {row[1] for row in users_result.fetchall()}
+        if 'profile_image' not in user_columns:
+            db.session.execute(db.text("ALTER TABLE users ADD COLUMN profile_image BLOB"))
+        if 'profile_image_mime' not in user_columns:
+            db.session.execute(db.text("ALTER TABLE users ADD COLUMN profile_image_mime VARCHAR(64)"))
+        if 'profile_image_updated_at' not in user_columns:
+            db.session.execute(
+                db.text("ALTER TABLE users ADD COLUMN profile_image_updated_at DATETIME")
+            )
+
         db.session.commit()
     except Exception:
         db.session.rollback()
+
+
+ALLOWED_AVATAR_EXTENSIONS = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif"}
+ALLOWED_AVATAR_MIMES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".jfif": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
+
+
+@app.context_processor
+def inject_avatar_helpers():
+    """Expone helpers de avatar a todas las plantillas."""
+
+    def user_avatar_url(user=None):
+        user = user or current_user
+        if (
+            getattr(user, "is_authenticated", False)
+            and getattr(user, "has_profile_image", False)
+        ):
+            version = ""
+            if getattr(user, "profile_image_updated_at", None):
+                version = user.profile_image_updated_at.strftime("%Y%m%d%H%M%S")
+            return url_for("serve_profile_avatar", user_id=user.id, v=version)
+        return url_for("static", filename="images/pfp-default/Default-pfp-tumoria.png")
+
+    return {"user_avatar_url": user_avatar_url}
 
 modelos = {}
 DEVICE = None
@@ -143,31 +195,78 @@ def _import_ml_helpers():
     return cargar_modelo, predecir_imagen
 
 
-def resolver_modelo_web():
-    """Devuelve la ruta del modelo preferido para la app web.
+def listar_modelos_disponibles():
+    """Lista archivos .pth bajo models/ para el selector de la web."""
+    if not os.path.isdir(MODELS_DIR):
+        return []
 
-    Prioriza checkpoint_epoch_80.pth porque es el checkpoint que quieres usar para inferencia.
-    Si no existe, usa best_model.pth como respaldo para no bloquear la interfaz.
-    """
-    candidatos = [CHECKPOINT_FALLBACK, MODEL_PATH]
-    for candidate in candidatos:
-        if os.path.exists(candidate):
-            return candidate
-    return MODEL_PATH
+    entries = []
+    for root, _, files in os.walk(MODELS_DIR):
+        for filename in sorted(files):
+            if not filename.lower().endswith(".pth"):
+                continue
+            full_path = os.path.join(root, filename)
+            rel_id = os.path.relpath(full_path, MODELS_DIR).replace("\\", "/")
+            entries.append(
+                {
+                    "id": rel_id,
+                    "label": rel_id,
+                    "path": full_path,
+                }
+            )
 
+    # Preferir best_model.pth al inicio de la lista si existe.
+    entries.sort(key=lambda item: (0 if item["id"] == "best_model.pth" else 1, item["id"]))
+    return entries
+
+
+def resolver_ruta_modelo(model_id=None):
+    """Resuelve un id relativo seguro a ruta absoluta dentro de models/."""
+    available = {item["id"]: item for item in listar_modelos_disponibles()}
+    if model_id:
+        model_id = model_id.replace("\\", "/").lstrip("/")
+        if model_id in available:
+            return available[model_id]["path"], model_id
+
+    if "best_model.pth" in available:
+        return available["best_model.pth"]["path"], "best_model.pth"
+    if available:
+        first = next(iter(available.values()))
+        return first["path"], first["id"]
+    return MODEL_PATH, "best_model.pth"
+
+
+def render_main_menu(
+    images=None,
+    error=None,
+    summary=None,
+    selected_model="unet",
+    selected_weights=None,
+):
+    """Renderiza el menú principal incluyendo el catálogo de pesos .pth."""
+    available_models = listar_modelos_disponibles()
+    if selected_weights is None:
+        _, selected_weights = resolver_ruta_modelo(None)
+    return render_template(
+        "main_menu.html",
+        images=images,
+        error=error,
+        summary=summary,
+        selected_model=selected_model,
+        available_models=available_models,
+        selected_weights=selected_weights,
+    )
 
 
 # ------------------------------------------------------------
 # Carga perezosa del modelo
 # ------------------------------------------------------------
 
-def get_modelo(model_type="unet"):
+def get_modelo(model_type="unet", model_id=None):
     global modelos, DEVICE
-    if model_type in modelos:
-        return modelos[model_type], DEVICE
 
-    try: # No se necesita toch si no se entranara IA en la maquina
-        import torch # type: ignore
+    try:  # No se necesita torch si no se entrenará IA en la máquina
+        import torch  # type: ignore
     except ImportError as exc:
         raise RuntimeError(
             "PyTorch no está instalado. La web puede abrir sin IA, pero la ruta /predict requiere ML."
@@ -175,18 +274,22 @@ def get_modelo(model_type="unet"):
 
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if model_type == "unet":
-        model_path = resolver_modelo_web()
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(
-                f"No se encontró un modelo entrenado en {MODEL_PATH} ni en {CHECKPOINT_FALLBACK}. Ejecuta entrenar.py primero."
-            )
-        cargar_modelo, _ = _import_ml_helpers()
-        modelos[model_type] = cargar_modelo(model_path, device=DEVICE)
-    else:
+    if model_type != "unet":
         raise ValueError("Tipo de modelo no soportado")
 
-    return modelos[model_type], DEVICE
+    model_path, resolved_id = resolver_ruta_modelo(model_id)
+    cache_key = f"unet::{resolved_id}"
+    if cache_key in modelos:
+        return modelos[cache_key], DEVICE, resolved_id
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f"No se encontró un modelo entrenado en {MODELS_DIR}. Ejecuta entrenar.py primero."
+        )
+
+    cargar_modelo, _ = _import_ml_helpers()
+    modelos[cache_key] = cargar_modelo(model_path, device=DEVICE)
+    return modelos[cache_key], DEVICE, resolved_id
 
 
 def predecir_con_modelo(model, model_type, dcm_path, device):
@@ -494,6 +597,54 @@ def pfp_default(filename):
     return send_from_directory(os.path.join(BASE_DIR, 'static', 'images', 'pfp-default'), filename)
 
 
+@app.route("/profile/avatar/<int:user_id>")
+@login_required
+def serve_profile_avatar(user_id):
+    """Sirve la foto de perfil almacenada en la base de datos."""
+    user = User.query.get_or_404(user_id)
+    if not user.profile_image:
+        return redirect(
+            url_for("static", filename="images/pfp-default/Default-pfp-tumoria.png")
+        )
+    return Response(
+        user.profile_image,
+        mimetype=user.profile_image_mime or "image/jpeg",
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
+@app.route("/profile/avatar", methods=["POST"])
+@login_required
+def upload_profile_avatar():
+    """Actualiza la foto de perfil del usuario autenticado."""
+    file = request.files.get("avatar")
+    if file is None or not file.filename:
+        flash("No se seleccionó ninguna imagen.", "danger")
+        return redirect(url_for("profile"))
+
+    filename = secure_filename(file.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_AVATAR_EXTENSIONS:
+        flash("Formato no permitido. Usa JPG, JFIF, PNG, WEBP o GIF.", "danger")
+        return redirect(url_for("profile"))
+
+    data = file.read()
+    if not data:
+        flash("El archivo de imagen está vacío.", "danger")
+        return redirect(url_for("profile"))
+    if len(data) > MAX_AVATAR_BYTES:
+        flash("La imagen supera el límite de 2 MB.", "danger")
+        return redirect(url_for("profile"))
+
+    current_user.profile_image = data
+    current_user.profile_image_mime = ALLOWED_AVATAR_MIMES.get(ext, "image/jpeg")
+    current_user.profile_image_updated_at = datetime.utcnow()
+    db.session.commit()
+
+    flash("Foto de perfil actualizada.", "success")
+    return redirect(url_for("profile"))
+
+
 @app.route("/profile", methods=["GET"])
 @login_required
 def profile():
@@ -584,9 +735,7 @@ def delete_patient_study(study_id):
 @app.route("/main", methods=["GET"])
 @login_required
 def main_menu():
-    return render_template(
-        "main_menu.html", images=None, error=None, summary=None, selected_model="unet"
-    )
+    return render_main_menu()
 
 
 @app.route("/help", methods=["GET"])
@@ -602,39 +751,36 @@ def predict():
     model_type = (request.form.get("model_type") or "unet").strip().lower()
     if model_type not in {"unet", "yolo26"}:
         model_type = "unet"
+    selected_weights = (request.form.get("model_weights") or "").strip() or None
 
     file = request.files.get("file")
     if file is None or file.filename == "":
-        return render_template(
-            "main_menu.html",
-            images=None,
+        return render_main_menu(
             error="No se envió ningún archivo",
-            summary=None,
             selected_model=model_type,
+            selected_weights=selected_weights,
         )
 
     patient_id = (request.form.get("patient_id") or "").strip()
     if not patient_id:
-        return render_template(
-            "main_menu.html",
-            images=None,
+        return render_main_menu(
             error="El ID del paciente es obligatorio para guardar el historial.",
-            summary=None,
             selected_model=model_type,
+            selected_weights=selected_weights,
         )
 
     filename = file.filename
     ext = os.path.splitext(filename)[1].lower()
 
     try:
-        model, device = get_modelo(model_type)
+        model, device, selected_weights = get_modelo(
+            model_type, model_id=selected_weights
+        )
     except Exception as e:
-        return render_template(
-            "main_menu.html",
-            images=None,
+        return render_main_menu(
             error=str(e),
-            summary=None,
             selected_model=model_type,
+            selected_weights=selected_weights,
         )
 
     images_out = []
@@ -647,6 +793,7 @@ def predict():
             self.num_with_tumor = 0
             self.total_area_mm2 = 0.0
             self.model_type = model_type
+            self.weights_id = selected_weights
 
     summary = Summary()
 
@@ -678,12 +825,10 @@ def predict():
             )
         except Exception as e:
             _remove_uploaded_path(save_path)
-            return render_template(
-                "main_menu.html",
-                images=None,
+            return render_main_menu(
                 error=f"Error al procesar DICOM: {e}",
-                summary=None,
                 selected_model=model_type,
+                selected_weights=selected_weights,
             )
         finally:
             _remove_uploaded_path(save_path)
@@ -708,12 +853,10 @@ def predict():
                         dcm_paths.append(os.path.join(root, f))
 
             if not dcm_paths:
-                return render_template(
-                    "main_menu.html",
-                    images=None,
+                return render_main_menu(
                     error="El ZIP no contiene archivos .dcm",
-                    summary=None,
                     selected_model=model_type,
+                    selected_weights=selected_weights,
                 )
 
             for dcm_path in sorted(dcm_paths)[:20]:
@@ -746,24 +889,20 @@ def predict():
         except Exception as e:
             _remove_uploaded_path(save_path)
             _remove_uploaded_path(extract_dir)
-            return render_template(
-                "main_menu.html",
-                images=None,
+            return render_main_menu(
                 error=f"Error al procesar ZIP: {e}",
-                summary=None,
                 selected_model=model_type,
+                selected_weights=selected_weights,
             )
         finally:
             _remove_uploaded_path(save_path)
             _remove_uploaded_path(extract_dir)
 
     else:
-        return render_template(
-            "main_menu.html",
-            images=None,
+        return render_main_menu(
             error="Tipo de archivo no soportado. Usa .dcm o .zip",
-            summary=None,
             selected_model=model_type,
+            selected_weights=selected_weights,
         )
 
     if summary.num_images > 0:
@@ -779,6 +918,7 @@ def predict():
             num_with_tumor=summary.num_with_tumor,
             total_area_mm2=float(summary.total_area_mm2),
             result_summary=(
+                f"Pesos: {selected_weights}; "
                 f"Imágenes analizadas: {summary.num_images}; "
                 f"Con tumor: {summary.num_with_tumor}; "
                 f"Área total estimada: {float(summary.total_area_mm2):.1f} mm²"
@@ -788,10 +928,9 @@ def predict():
         db.session.add(study)
         db.session.commit()
 
-    return render_template(
-        "main_menu.html",
+    return render_main_menu(
         images=images_out,
-        error=None,
         summary=summary if summary.num_images > 0 else None,
         selected_model=model_type,
+        selected_weights=selected_weights,
     )

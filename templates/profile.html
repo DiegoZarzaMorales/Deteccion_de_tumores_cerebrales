@@ -40,6 +40,16 @@
       gap: 18px;
       text-align: left;
     }
+    .profile-avatar-button {
+      position: relative;
+      display: inline-block;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      border-radius: 18px;
+    }
     .profile-avatar {
       width: 76px;
       height: 76px;
@@ -48,7 +58,26 @@
       border: 3px solid rgba(255, 255, 255, 0.5);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
       background: rgba(255, 255, 255, 0.08);
-      flex-shrink: 0;
+      display: block;
+    }
+    .profile-avatar-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      background: rgba(0, 0, 0, 0.45);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      pointer-events: none;
+    }
+    .profile-avatar-button:hover .profile-avatar-overlay,
+    .profile-avatar-button:focus-visible .profile-avatar-overlay {
+      opacity: 1;
     }
     .profile-name-block {
       display: flex;
@@ -148,7 +177,7 @@
           </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
-              <img src="{{ url_for('static', filename='images/icon/user_icon_tumoria.png') }}" alt="Perfil de {{ current_user.username }}" height="24" class="me-2 rounded-circle">
+              <img src="{{ user_avatar_url() }}" alt="Perfil de {{ current_user.username }}" height="24" width="24" class="me-2 rounded-circle object-fit-cover">
               {{ current_user.username }}
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
@@ -167,13 +196,48 @@
 
   <!-- Contenido -->
   <div class="container-fluid px-3 px-md-5 py-5">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} mb-3" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
     <div class="row">
       <!-- Perfil del Usuario -->
       <div class="col-lg-4 mb-4">
         <div class="card profile-card">
           <div class="profile-header">
             <div class="profile-header-content">
-              <img class="profile-avatar" src="{{ url_for('static', filename='images/pfp-default/Default-pfp-tumoria.png') }}" alt="Perfil de {{ current_user.username }}">
+              <form
+                id="avatar-form"
+                action="{{ url_for('upload_profile_avatar') }}"
+                method="post"
+                enctype="multipart/form-data"
+              >
+                <input
+                  id="avatar-input"
+                  type="file"
+                  name="avatar"
+                  accept=".jpg,.jpeg,.jfif,.png,.webp,.gif,image/jpeg,image/*"
+                  hidden
+                />
+                <button
+                  type="button"
+                  class="profile-avatar-button"
+                  id="avatar-trigger"
+                  title="Cambiar foto de perfil"
+                  aria-label="Cambiar foto de perfil"
+                >
+                  <img
+                    class="profile-avatar"
+                    id="profile-avatar-img"
+                    src="{{ user_avatar_url() }}"
+                    alt="Perfil de {{ current_user.username }}"
+                  />
+                  <span class="profile-avatar-overlay">Cambiar</span>
+                </button>
+              </form>
               <div class="profile-name-block">
                 <h2 class="mb-1">{{ current_user.username }}</h2>
                 <p class="mb-0 text-white-50">Perfil de Usuario</p>
@@ -297,5 +361,21 @@
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
   <script>
+    (function () {
+      const trigger = document.getElementById("avatar-trigger");
+      const input = document.getElementById("avatar-input");
+      const form = document.getElementById("avatar-form");
+      if (!trigger || !input || !form) return;
+
+      trigger.addEventListener("click", function () {
+        input.click();
+      });
+
+      input.addEventListener("change", function () {
+        if (input.files && input.files.length > 0) {
+          form.submit();
+        }
+      });
+    })();
   </script>
   <script src="{{ url_for('static', filename='background-animation.js') }}"></script>

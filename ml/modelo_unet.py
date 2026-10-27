@@ -28,12 +28,14 @@ class UNet(nn.Module):
     Arquitectura U-Net para segmentación de tumores cerebrales
     
     Args:
-        in_channels: Número de canales de entrada (1 para imágenes en escala de grises)
-        out_channels: Número de clases de salida (1 para segmentación binaria)
+        in_channels: Número de canales de entrada (4 para BraTS multimodal)
+        out_channels: Número de clases de salida (4 = fondo/NCR/ED/ET)
         features: Lista con el número de features en cada nivel [64, 128, 256, 512]
     """
-    def __init__(self, in_channels=1, out_channels=1, features=[64, 128, 256, 512]):
+    def __init__(self, in_channels=4, out_channels=4, features=[64, 128, 256, 512]):
         super(UNet, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         self.downs = nn.ModuleList()
         self.ups = nn.ModuleList()
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -86,7 +88,11 @@ class UNet(nn.Module):
         return self.final_conv(x)
 
 
-def crear_modelo(device='cuda' if torch.cuda.is_available() else 'cpu'):
+def crear_modelo(
+    device='cuda' if torch.cuda.is_available() else 'cpu',
+    in_channels=4,
+    out_channels=4,
+):
     """
     Crea y retorna el modelo U-Net
     
@@ -94,12 +100,14 @@ def crear_modelo(device='cuda' if torch.cuda.is_available() else 'cpu'):
         modelo: Modelo U-Net listo para entrenar
         device: Dispositivo (cuda o cpu)
     """
-    modelo = UNet(in_channels=1, out_channels=1)
+    modelo = UNet(in_channels=in_channels, out_channels=out_channels)
     modelo = modelo.to(device)
     
     print(f"\n{'='*60}")
     print(f"Modelo U-Net creado")
     print(f"Dispositivo: {device}")
+    print(f"Canales de entrada: {in_channels}")
+    print(f"Clases de salida: {out_channels}")
     print(f"Parámetros totales: {sum(p.numel() for p in modelo.parameters()):,}")
     print(f"{'='*60}\n")
     
@@ -108,8 +116,8 @@ def crear_modelo(device='cuda' if torch.cuda.is_available() else 'cpu'):
 
 def test_modelo():
     """Prueba rápida del modelo"""
-    modelo, device = crear_modelo()
-    x = torch.randn(1, 1, 256, 256).to(device)
+    modelo, device = crear_modelo(in_channels=4, out_channels=4)
+    x = torch.randn(1, 4, 256, 256).to(device)
     prediccion = modelo(x)
     print(f"Input shape: {x.shape}")
     print(f"Output shape: {prediccion.shape}")
