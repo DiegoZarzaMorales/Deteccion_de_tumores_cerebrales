@@ -1,8 +1,11 @@
 # 🧠 Guía de Entrenamiento - Deep Learning para Detección de Tumores
 
-## 📋 ¿Qué hace cada archivo?
-## Codigo Joel perzonalizado test:
+### Codigo Joel perzonalizado test:
 'python entrenar.py --data-dir "C:\Users\ElZuk\MRI-IA-Training\data\raw" --device cuda --epochs 1 --batch-size 16 --learning-rate 0.00001 --num-workers 2 --persistent-workers --prefetch-factor 2 --checkpoint-every 1'
+
+
+## 📋 ¿Qué hace cada archivo?
+
 ### 1. **modelo_unet.py**
 - Contiene la arquitectura U-Net (red neuronal para segmentación)
 - U-Net es el estándar en imágenes médicas

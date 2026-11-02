@@ -1,6 +1,6 @@
 # Confianza de la predicción
 
-La **confianza** resume qué tan seguro está el modelo de su decisión en la región relevante de la imagen. Se calcula en `ml/predecir.py` y se muestra en la web/GUI como porcentaje (`confianza × 100`).
+La **confianza** resume qué tan seguro está el modelo de su decisión en la región relevante de la imagen. Se calcula en `ml/predecir.py` y se muestra en la web como porcentaje (`confianza × 100`).
 
 Rango: valor en `[0, 1]` (0 %–100 %).
 
@@ -92,7 +92,6 @@ Media de la probabilidad de “no tumor”.
 
 1. `predecir_imagen()` calcula `confianza` y la devuelve como 4.º valor.
 2. **Web** (`web/app.py`): título de la figura (`Detección: Positiva/Negativa (N%)`) y texto `Confianza: N%` junto al tamaño estimado.
-3. **GUI** (`gui/interfaz_visual.py`): se muestra en el estado al terminar el análisis.
 
 ---
 

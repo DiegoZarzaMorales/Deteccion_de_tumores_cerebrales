@@ -11,39 +11,28 @@ Incluye:
 ## Estructura del proyecto
 
 ```
-DisenoDeInterfaz/
+Deteccion_de_tumores_cerebrales/
 │
-├── python-scripts/       # Scripts que antes estaban en la raíz
-│   ├── main.py           # Entrada GUI de escritorio (Tkinter)
-│   ├── predecir.py       # Wrapper para usar predicción U‑Net por consola
-│   ├── preparar_yolo_dcm.py
-│   ├── entrenar_yolo.py
-│   ├── dataset_loader.py
-│   └── modelo_unet.py
 ├── entrenar.py           # Wrapper para entrenar la U‑Net
-├── convertir_mat_a_imagen.py
 ├── web_app.py            # Wrapper para lanzar la app web (Flask)
 ├── core/                 # Lógica clásica
-│   ├── config.py         # Configuración y parámetros de detección
-│   ├── carga_datos.py    # Carga y extracción de ZIP de BraTS
-│   ├── procesamiento.py  # Procesamiento de imágenes y features
-│   ├── deteccion.py      # Algoritmos de detección clásica
-│   ├── clasificacion.py  # Random Forest y métricas
-│   └── visualizacion.py  # Gráficas y análisis espacial
+│   ├── config.py
+│   ├── carga_datos.py
+│   ├── procesamiento.py
+│   ├── deteccion.py
+│   ├── clasificacion.py
+│   └── visualizacion.py
 ├── ml/                   # Módulos de IA (PyTorch)
-│   ├── modelo_unet.py    # Arquitectura U‑Net
-│   ├── dataset_loader.py # Dataset/Dataloaders BraTS (pseudo‑máscaras)
-│   ├── entrenar.py       # Lazo de entrenamiento U‑Net
-│   ├── predecir.py       # Funciones de inferencia y visualización IA (U‑Net)
-│   └── predecir.py       # Funciones de inferencia y visualización IA (U‑Net)
-├── gui/
-│   └── interfaz_visual.py # Interfaz completa de escritorio
+│   ├── modelo_unet.py
+│   ├── dataset_loader.py
+│   ├── entrenar.py
+│   └── predecir.py
 ├── web/
 │   └── app.py            # Aplicación Flask (frontend HTML)
 ├── models/               # Modelos entrenados (.pth)
 ├── static/               # Recursos estáticos web (incluye resultados PNG)
 ├── uploads/              # Archivos subidos en modo web
-├── requirements.txt      # Dependencias
+├── requirements.txt
 └── README.md
 ```
 
@@ -63,7 +52,7 @@ El modelo de IA entrenado no se sube a GitHub por tamaño (>100 MB por archivo).
 	- Enlace: https://drive.google.com/drive/folders/1FGNE-fo40H9GsfXLJ5kDjGT3_25ifG94?usp=sharing
 2. Copia la carpeta `models` descargada dentro de la raíz del proyecto, de forma que quede:
 	```
-	DisenoDeInterfaz/
+	Deteccion_de_tumores_cerebrales/
 	├── models/
 	│   ├── best_model.pth
 	│   ├── checkpoint_epoch_10.pth (opcional)
@@ -73,7 +62,7 @@ El modelo de IA entrenado no se sube a GitHub por tamaño (>100 MB por archivo).
 	└── ... resto de archivos del proyecto
 	```
 
-Con esto, los scripts `entrenar.py`, `python-scripts/predecir.py`, la GUI (`python-scripts/main.py`) y la app web (`web_app.py`) encontrarán automáticamente `models/best_model.pth`.
+Con esto, `entrenar.py` y la app web (`web_app.py`) encontrarán automáticamente `models/best_model.pth`.
 
 ## Uso rápido
 
@@ -101,17 +90,7 @@ se combinan los canales de `mask` para formar una máscara binaria de
 segmentación. La división de entrenamiento y validación se realiza por
 volumen, evitando mezclar cortes del mismo volumen entre ambos grupos.
 
-### 2) Interfaz de escritorio (modo completo)
-
-```bash
-python python-scripts/main.py
-```
-
-- Carga un ZIP con la base de datos (BraTS).
-- Procesa imágenes, detecta tumores, entrena un clasificador clásico y muestra análisis.
-- Botones extra permiten usar IA (U‑Net o YOLO) para analizar imágenes T1wCE individuales o carpetas.
-
-### 3) Frontend web (modo simple para usuario)
+### 2) Frontend web
 
 ```bash
 python web_app.py
@@ -120,7 +99,7 @@ python web_app.py
 Luego abre en el navegador: `http://localhost:5000`
 
 - Sube un archivo `.dcm` o un `.zip` con varias T1wCE.
--- Elige el modelo (`U-Net`) y la IA resalta la región tumoral, mostrando área aproximada, lado de la imagen y aviso de calidad.
+- Elige el modelo (`U-Net`) y la IA resalta la región tumoral, mostrando área aproximada, lado de la imagen y aviso de calidad.
 
 Si solo quieres levantar la web sin entrenar ni usar la parte de IA, instala las dependencias ligeras:
 
