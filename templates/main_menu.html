@@ -208,6 +208,9 @@
                                 {% else %}
                                   <div>Área estimada: {{ img.area }} px</div>
                                 {% endif %}
+                                {% if img.confidence_pct is defined and img.confidence_pct is not none %}
+                                  <div>Confianza: {{ img.confidence_pct }}%</div>
+                                {% endif %}
                               </div>
                             </div>
                           </div>
@@ -225,7 +228,10 @@
                             <div class="d-flex flex-column align-items-start gap-2 ps-md-4 ms-md-2">
                               <span class="badge text-bg-success">Tumor NO detectado</span>
                               <div class="fs-5 fw-semibold lh-sm text-white mt-1">
-                                Tumor NO detectado
+                                <div>Tumor NO detectado</div>
+                                {% if img.confidence_pct is defined and img.confidence_pct is not none %}
+                                  <div>Confianza: {{ img.confidence_pct }}%</div>
+                                {% endif %}
                               </div>
                             </div>
                           </div>

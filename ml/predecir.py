@@ -63,11 +63,34 @@ def _postproceso_componente_principal(img_original, mascara_prob):
     return (labels == label_seed).astype(np.uint8)
 
 
+def _confianza_multiclase(probs, clases):
+    """Media de la probabilidad de la clase predicha en la región relevante.
+
+    probs: (C, H, W) softmax
+    clases: (H, W) argmax
+    """
+    tumor_mask = clases > 0
+    if np.any(tumor_mask):
+        # Media de p_ŷ(x) solo sobre píxeles de tumor.
+        rows, cols = np.nonzero(tumor_mask)
+        return float(probs[clases[rows, cols], rows, cols].mean())
+
+    # Sin tumor: media de probabilidad de fondo.
+    return float(probs[0].mean())
+
+
+def _confianza_binaria(prob_map, mascara_binaria):
+    """Confianza para salida binaria (sigmoid)."""
+    if int(mascara_binaria.sum()) > 0:
+        return float(prob_map[mascara_binaria > 0].mean())
+    return float((1.0 - prob_map).mean())
+
+
 def predecir_imagen(modelo, img_path, size=256, device='cpu', threshold=0.5):
     """Realiza predicción en una imagen DICOM.
 
     Returns:
-        img_original, mascara_binaria (WT), mapa_probabilidad_o_clases
+        img_original, mascara_binaria (WT), mapa_probabilidad_o_clases, confianza (0-1)
     """
     dcm = pydicom.dcmread(img_path)
     img = dcm.pixel_array.astype(np.float32)
@@ -85,20 +108,23 @@ def predecir_imagen(modelo, img_path, size=256, device='cpu', threshold=0.5):
         prediccion = modelo(img_tensor)
 
     if out_channels > 1:
-        clases = torch.argmax(prediccion, dim=1).squeeze(0).cpu().numpy().astype(np.uint8)
+        probs = torch.softmax(prediccion, dim=1).squeeze(0).cpu().numpy()
+        clases = np.argmax(probs, axis=0).astype(np.uint8)
+        confianza = _confianza_multiclase(probs, clases)
         clases_full = cv2.resize(
             clases,
             (img_original.shape[1], img_original.shape[0]),
             interpolation=cv2.INTER_NEAREST,
         )
         mascara_binaria = (clases_full > 0).astype(np.uint8)
-        return img_original, mascara_binaria, clases_full.astype(np.float32)
+        return img_original, mascara_binaria, clases_full.astype(np.float32), confianza
 
     prediccion = torch.sigmoid(prediccion)
     mascara = prediccion.squeeze().cpu().numpy()
     mascara_full = cv2.resize(mascara, (img_original.shape[1], img_original.shape[0]))
     mascara_binaria = _postproceso_componente_principal(img_original, mascara_full)
-    return img_original, mascara_binaria, mascara_full
+    confianza = _confianza_binaria(mascara_full, mascara_binaria)
+    return img_original, mascara_binaria, mascara_full, confianza
 
 
 def visualizar_prediccion(img, mascara, mascara_prob=None, save_path=None):
@@ -139,7 +165,7 @@ def predecir_carpeta(modelo, carpeta_path, output_dir='predicciones', device='cp
     
     for idx, archivo in enumerate(archivos):
         print(f"\nProcesando [{idx+1}/{len(archivos)}]: {archivo.name}")
-        img, mascara, mascara_prob = predecir_imagen(
+        img, mascara, mascara_prob, _confianza = predecir_imagen(
             modelo, archivo, device=device
         )
         save_path = output_dir / f"pred_{archivo.stem}.png"
@@ -159,7 +185,8 @@ if __name__ == "__main__":
     DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     modelo = cargar_modelo(MODEL_PATH, device=DEVICE)
-    img, mascara, mascara_prob = predecir_imagen(
+    img, mascara, mascara_prob, confianza = predecir_imagen(
         modelo, IMAGE_PATH, device=DEVICE, threshold=0.5
     )
+    print(f"Confianza: {confianza * 100:.0f}%")
     visualizar_prediccion(img, mascara, mascara_prob)

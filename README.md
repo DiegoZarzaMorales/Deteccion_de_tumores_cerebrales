@@ -6,7 +6,7 @@ Sistema para detección y visualización de tumores cerebrales en imágenes T1wC
 Incluye:
 - Pipeline clásico de procesamiento + Machine Learning.
 - Modelo de IA basado en U‑Net (PyTorch) para detectar/segmentar la zona tumoral.
-- Interfaz de escritorio (Tkinter) y frontend web (Flask) para uso sencillo por el usuario.
+- Interfaz web (Flask) para uso sencillo por un usuario especializado.
 
 ## Estructura del proyecto
 

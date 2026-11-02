@@ -341,7 +341,7 @@ class SistemaTumoresGUI:
             modelo_txt = "U-Net"
             self.actualizar_estado(f"Analizando imagen con {modelo_txt}...")
 
-            img, mascara, mascara_prob = predecir_imagen_ia(
+            img, mascara, mascara_prob, confianza = predecir_imagen_ia(
                 self.modelo_ia,
                 img_path,
                 device=self.device_ia,
@@ -349,7 +349,9 @@ class SistemaTumoresGUI:
             )
 
             visualizar_prediccion_ia(img, mascara, mascara_prob)
-            self.actualizar_estado(f"Análisis con {modelo_txt} completado")
+            self.actualizar_estado(
+                f"Análisis con {modelo_txt} completado (confianza {int(round(confianza * 100))}%)"
+            )
         except Exception as e:
             messagebox.showerror("Error IA", f"Error al analizar imagen:\n{e}")
             self.actualizar_estado("Error en análisis IA")

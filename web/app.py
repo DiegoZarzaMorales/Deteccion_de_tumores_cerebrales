@@ -1,6 +1,5 @@
 # ============================================================
 # FRONTEND WEB SENCILLO (Flask + HTML)
-# Subir imágenes T1wCE y marcar tumor con la IA
 # ============================================================
 
 import os
@@ -301,7 +300,7 @@ def predecir_con_modelo(model, model_type, dcm_path, device):
 # Helpers
 # ------------------------------------------------------------
 
-def guardar_figura_prediccion(img, mascara, mascara_prob=None):
+def guardar_figura_prediccion(img, mascara, mascara_prob=None, confianza=None):
     """Genera una imagen PNG con la predicción y devuelve la ruta relativa."""
     try:
         import matplotlib
@@ -321,7 +320,11 @@ def guardar_figura_prediccion(img, mascara, mascara_prob=None):
 
     axes[1].imshow(img, cmap="gray")
     axes[1].imshow(mascara, cmap="Reds", alpha=0.5)
-    axes[1].set_title("Tumor detectado")
+    tumor_detectado = int(mascara.sum()) > 0
+    titulo = "Detección: Positiva" if tumor_detectado else "Detección: Negativa"
+    if confianza is not None:
+        titulo = f"{titulo} ({int(round(confianza * 100))}%)"
+    axes[1].set_title(titulo)
     axes[1].axis("off")
 
     plt.tight_layout()
@@ -803,8 +806,13 @@ def predict():
         file.save(save_path)
 
         try:
-            img, mascara, mascara_prob = predecir_con_modelo(model, model_type, save_path, device)
-            img_src = guardar_figura_prediccion(img, mascara, mascara_prob)
+            img, mascara, mascara_prob, confianza = predecir_con_modelo(
+                model, model_type, save_path, device
+            )
+            confidence_pct = int(round(float(confianza) * 100))
+            img_src = guardar_figura_prediccion(
+                img, mascara, mascara_prob, confianza=confianza
+            )
             area = int(mascara.sum())
             stats = extraer_estadisticas_dicom(save_path, mascara)
 
@@ -821,6 +829,7 @@ def predict():
                     "area_mm2": stats["area_mm2"],
                     "side": stats["side"],
                     "quality_warning": stats["quality_warning"],
+                    "confidence_pct": confidence_pct,
                 }
             )
         except Exception as e:
@@ -861,10 +870,13 @@ def predict():
 
             for dcm_path in sorted(dcm_paths)[:20]:
                 try:
-                    img, mascara, mascara_prob = predecir_con_modelo(
+                    img, mascara, mascara_prob, confianza = predecir_con_modelo(
                         model, model_type, dcm_path, device
                     )
-                    img_src = guardar_figura_prediccion(img, mascara, mascara_prob)
+                    confidence_pct = int(round(float(confianza) * 100))
+                    img_src = guardar_figura_prediccion(
+                        img, mascara, mascara_prob, confianza=confianza
+                    )
                     area = int(mascara.sum())
                     stats = extraer_estadisticas_dicom(dcm_path, mascara)
 
@@ -881,6 +893,7 @@ def predict():
                             "area_mm2": stats["area_mm2"],
                             "side": stats["side"],
                             "quality_warning": stats["quality_warning"],
+                            "confidence_pct": confidence_pct,
                         }
                     )
                 except Exception:
