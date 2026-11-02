@@ -704,7 +704,8 @@ def crear_dataloaders(
         groups.setdefault(group_key, []).append(index)
 
     group_keys = list(groups)
-    random.shuffle(group_keys)
+    # Semilla fija → mismo split train/val entre corridas (mismo filtro/seed).
+    random.Random(hdf5_filter_seed).shuffle(group_keys)
     train_group_count = max(1, int(train_split * len(group_keys)))
     if len(group_keys) > 1:
         train_group_count = min(train_group_count, len(group_keys) - 1)
