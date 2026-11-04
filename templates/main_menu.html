@@ -150,10 +150,10 @@
 
             {% if summary %}
               <div class="card mb-3">
-                <div class="card-body text-white">
-                  <div class="fw-semibold mb-2">Resumen del estudio</div>
-                  <div class="row g-2 small">
-                    <div class="col-12 col-sm-3">
+                <div class="card-body text-white text-center">
+                  <div class="fw-semibold fs-4 mb-3">Resumen del estudio</div>
+                  <div class="row g-3 fs-5 justify-content-center">
+                    <div class="col-12 col-sm-4">
                       <span class="text-white">Modelo:</span>
                       {% if summary.model_type == 'yolo26' %}
                         YOLO26
@@ -164,19 +164,11 @@
                         <div class="small text-white-50 text-break">{{ summary.weights_id }}</div>
                       {% endif %}
                     </div>
-                    <div class="col-12 col-sm-3">
+                    <div class="col-12 col-sm-4">
                       <span class="text-white">Imágenes analizadas:</span> {{ summary.num_images }}
                     </div>
-                    <div class="col-12 col-sm-3">
+                    <div class="col-12 col-sm-4">
                       <span class="text-white">Imágenes con tumor:</span> {{ summary.num_with_tumor }}
-                    </div>
-                    <div class="col-12 col-sm-3">
-                      <span class="text-white">Volumen relativo:</span>
-                      {% if summary.total_area_mm2 and summary.total_area_mm2 > 0 %}
-                        {{ "%.1f" % summary.total_area_mm2 }} mm²·slice
-                      {% else %}
-                        basado en área en píxeles
-                      {% endif %}
                     </div>
                   </div>
                 </div>
