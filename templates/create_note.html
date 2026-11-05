@@ -245,9 +245,15 @@
                 <button class="btn btn-save btn-lg flex-grow-1" type="submit">
                   Guardar Nota
                 </button>
-                <a href="{{ url_for('notes') }}" class="btn btn-outline-danger btn-lg">
-                  Cancelar
-                </a>
+                {% if patient_id %}
+                  <a href="{{ url_for('notes', patient_id=patient_id) }}" class="btn btn-outline-danger btn-lg">
+                    Cancelar
+                  </a>
+                {% else %}
+                  <a href="{{ url_for('notes') }}" class="btn btn-outline-danger btn-lg">
+                    Cancelar
+                  </a>
+                {% endif %}
               </div>
             </form>
           </div>
