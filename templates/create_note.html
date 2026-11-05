@@ -139,7 +139,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
     <div class="container-fluid px-3 px-md-5">
       <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('main_menu') }}">
-        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="TumorIA Logo" height="40" class="me-2">
+        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="Logo de TumorIA" height="40" class="me-2">
         TumorIA - Detección de Tumores Cerebrales
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Abrir menú" title="Abrir menú">
@@ -281,4 +281,5 @@
       });
     })();
   </script>
+  <script src="{{ url_for('static', filename='es-ui.js') }}"></script>
   <script src="{{ url_for('static', filename='background-animation.js') }}"></script>

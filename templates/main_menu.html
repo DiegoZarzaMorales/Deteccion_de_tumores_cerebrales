@@ -20,7 +20,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
     <div class="container-fluid px-3 px-md-5">
       <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('main_menu') }}">
-        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="TumorIA Logo" height="40" class="me-2">
+        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="Logo de TumorIA" height="40" class="me-2">
         TumorIA - Detección de Tumores Cerebrales
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Abrir menú" title="Abrir menú">
@@ -73,7 +73,7 @@
               <input type="hidden" name="model_type" value="unet" />
               <div class="mb-3">
                 <label class="form-label d-block" for="model_weights">
-                  Modelo de IA (para test, borrar despues)
+                  Modelo de IA
                 </label>
                 {% if available_models %}
                   <select
@@ -81,6 +81,7 @@
                     class="form-select"
                     name="model_weights"
                     aria-label="Seleccionar pesos del modelo U-Net"
+                    title="Seleccionar modelo de IA"
                   >
                     {% for model in available_models %}
                       <option
@@ -105,7 +106,32 @@
                 <label class="form-label" for="file_input">
                   Selecciona archivo (.dcm o .zip)
                 </label>
-                <input id="file_input" class="form-control" type="file" name="file" accept=".dcm,.zip" title="Selecciona un archivo DICOM (.dcm) o un ZIP con imágenes" placeholder="Selecciona un archivo .dcm o .zip" aria-label="Archivo de imagen DICOM o ZIP" required />
+                <div class="es-file-input" data-es-file-input>
+                  <input
+                    id="file_input"
+                    class="form-control"
+                    type="file"
+                    name="file"
+                    accept=".dcm,.zip"
+                    title="Selecciona un archivo DICOM (.dcm) o un ZIP con imágenes"
+                    aria-label="Archivo de imagen DICOM o ZIP"
+                    required
+                  />
+                  <span
+                    class="es-file-label"
+                    data-es-file-label
+                    data-empty-text="Ningún archivo seleccionado"
+                    title="Ningún archivo seleccionado"
+                  >Ningún archivo seleccionado</span>
+                  <button
+                    type="button"
+                    class="btn btn-outline-light es-file-button"
+                    data-es-file-button
+                    title="Elegir archivo"
+                  >
+                    Elegir archivo
+                  </button>
+                </div>
                 <div class="form-text">
                   • .dcm = una sola imagen<br>
                   • .zip = varias imágenes
@@ -120,6 +146,7 @@
                   type="text"
                   name="patient_id"
                   placeholder="Ej. HC-20481"
+                  title="Identificación del paciente"
                   aria-label="Identificación del paciente"
                   required
                 />
@@ -129,7 +156,7 @@
               </div>
 
               <div class="d-grid">
-                <button class="btn btn-primary btn-lg" type="submit">Analizar con IA</button>
+                <button class="btn btn-primary btn-lg" type="submit" title="Analizar con IA">Analizar con IA</button>
               </div>
             </form>
 
@@ -185,7 +212,7 @@
               {% for img in images %}
                 <div class="col-12">
                   <div class="card overflow-hidden">
-                    <img src="{{ img.src }}" class="app-result-img" alt="Predicción IA" />
+                    <img src="{{ img.src }}" class="app-result-img" alt="Resultado de la predicción con IA" title="Resultado de la predicción con IA" />
                     <div class="card-body">
                       {% if img.area > 0 %}
                         <div class="row g-0 mt-1">
@@ -241,6 +268,7 @@
   </main>
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='es-ui.js') }}"></script>
   <script src="{{ url_for('static', filename='background-animation.js') }}"></script>
 </body>
 </html>

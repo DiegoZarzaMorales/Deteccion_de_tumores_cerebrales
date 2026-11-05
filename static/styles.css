@@ -73,6 +73,42 @@ body.bg-body-tertiary {
 	box-shadow: 0 6px 14px rgba(17, 37, 64, 0.24);
 }
 
+/* Selector de archivo en español (oculta el control nativo en inglés) */
+.es-file-input {
+	display: flex;
+	gap: 0.5rem;
+	align-items: stretch;
+}
+.es-file-input input[type="file"] {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+.es-file-label {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	padding: 0.575rem 0.85rem;
+	border: 1px solid rgba(100, 180, 255, 0.25);
+	border-radius: 0.5rem;
+	background: rgba(15, 23, 42, 0.55);
+	color: rgba(236, 243, 255, 0.9);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.es-file-button {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
 /* Accesibilidad */
 .inline-form {
 	display: inline;

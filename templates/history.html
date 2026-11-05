@@ -154,7 +154,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
     <div class="container-fluid px-3 px-md-5">
       <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('main_menu') }}">
-        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="TumorIA Logo" height="40" class="me-2">
+        <img src="{{ url_for('static', filename='images/icon/Icono-TumorIA.jpg') }}" alt="Logo de TumorIA" height="40" class="me-2">
         TumorIA - Detección de Tumores Cerebrales
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Abrir menú" title="Abrir menú">
@@ -200,10 +200,10 @@
     <div class="history-search-card p-3 p-md-4 mb-4">
       <form method="GET" action="{{ url_for('patient_history') }}" class="row g-2 align-items-center">
         <div class="col-12 col-md-9">
-          <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar por ID o nombre del paciente" />
+          <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar por ID o nombre del paciente" title="Buscar por ID o nombre del paciente" aria-label="Buscar por ID o nombre del paciente" />
         </div>
         <div class="col-12 col-md-3 d-grid">
-          <button type="submit" class="btn btn-solid-blue">Buscar</button>
+          <button type="submit" class="btn btn-solid-blue" title="Buscar paciente">Buscar</button>
         </div>
       </form>
     </div>
@@ -270,7 +270,7 @@
                               {% for image_src in result_images %}
                                 {% if image_src %}
                                   <div class="col-12">
-                                    <img src="{{ image_src }}" alt="Resultado del análisis" class="result-image-preview border" />
+                                    <img src="{{ image_src }}" alt="Resultado del análisis" title="Resultado del análisis" class="result-image-preview border" />
                                   </div>
                                 {% endif %}
                               {% endfor %}
@@ -314,6 +314,7 @@
       });
     });
   </script>
+  <script src="{{ url_for('static', filename='es-ui.js') }}"></script>
   <script src="{{ url_for('static', filename='background-animation.js') }}"></script>
 </body>
 </html>
