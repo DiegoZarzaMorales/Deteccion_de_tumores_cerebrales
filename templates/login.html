@@ -149,19 +149,7 @@
 </head>
 <body>
   <canvas id="bg-canvas"></canvas>
-  <div class="flash-toast-container" id="flash-toast-container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="flash-toast {{ category }} show" role="alert" data-category="{{ category }}">
-            <button type="button" class="toast-close" aria-label="Cerrar" title="Cerrar">×</button>
-            {{ message }}
-            <div class="toast-progress"></div>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-  </div>
+  {% include 'partials/flash_toasts.html' %}
   <div class="login-container">
     <div class="card">
       <div class="card-header">
@@ -219,24 +207,6 @@
   </div>
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
-  <script>
-  (function() {
-    const toasts = document.querySelectorAll('.flash-toast');
-    toasts.forEach((toast) => {
-      const closeButton = toast.querySelector('.toast-close');
-      const hideToast = () => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 350);
-      };
-
-      if (closeButton) {
-        closeButton.addEventListener('click', hideToast);
-      }
-
-      setTimeout(hideToast, 4200);
-    });
-  })();
-  </script>
   <script src="{{ url_for('static', filename='es-ui.js') }}"></script>
   <script src="{{ url_for('static', filename='background-animation.js') }}"></script>
 </body>

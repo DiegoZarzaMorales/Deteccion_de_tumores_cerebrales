@@ -58,6 +58,7 @@
   </nav>
 
   <canvas id="bg-canvas" aria-hidden="true"></canvas>
+  {% include 'partials/flash_toasts.html' %}
 
   <main class="container-fluid px-3 px-md-5 py-4 app-main">
     <div class="row justify-content-center">
@@ -131,6 +132,29 @@
                     “Tumor no detectado” indica que no encontró una región suficiente para
                     marcarla. Ninguno de los dos resultados confirma ni descarta por sí solo
                     una enfermedad.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-classes">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#faq-classes" aria-expanded="false" aria-controls="faq-classes">
+                    ¿Qué significan NCR, ED y ET?
+                  </button>
+                </h2>
+                <div id="faq-classes" class="accordion-collapse collapse"
+                  aria-labelledby="faq-heading-classes" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    En el panel de clasificación (tercer panel del resultado) el modelo
+                    intenta separar el tumor completo en subregiones BraTS:
+                    <ul class="mb-2 mt-2">
+                      <li><strong>NCR</strong>: núcleo necrótico (tejido no viable del tumor).</li>
+                      <li><strong>ED</strong>: edema (hinchazón / infiltración alrededor del tumor).</li>
+                      <li><strong>ET</strong>: tumor realzante (región que realza con contraste).</li>
+                    </ul>
+                    Son etiquetas de segmentación estimadas por la IA; no sustituyen la
+                    interpretación de un profesional sanitario.
                   </div>
                 </div>
               </div>

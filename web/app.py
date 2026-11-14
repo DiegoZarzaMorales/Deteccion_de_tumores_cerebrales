@@ -300,19 +300,96 @@ def predecir_con_modelo(model, model_type, dcm_path, device):
 # Helpers
 # ------------------------------------------------------------
 
-def guardar_figura_prediccion(img, mascara, mascara_prob=None, confianza=None):
-    """Genera una imagen PNG con la predicción y devuelve la ruta relativa."""
+# Colores overlay para clases BraTS (NCR / ED / ET).
+_CLASS_OVERLAY_RGBA = {
+    1: (1.0, 0.15, 0.15, 0.55),  # NCR
+    2: (1.0, 0.92, 0.2, 0.55),   # ED
+    3: (0.15, 0.45, 1.0, 0.55),  # ET
+}
+_CLASS_NAMES_ES = {1: "NCR", 2: "ED", 3: "ET"}
+_CLASS_MEANINGS_ES = {
+    1: "núcleo necrótico",
+    2: "edema",
+    3: "tumor realzante",
+}
+
+
+def _mapa_es_clases_multiclase(mapa):
+    """True si el mapa parece etiquetas enteras 0–3 (no un mapa de probabilidad)."""
+    if mapa is None:
+        return False
+    import numpy as np
+
+    arr = np.asarray(mapa)
+    if arr.ndim != 2:
+        return False
+    if not np.isfinite(arr).all():
+        return False
+    # Probabilidad binaria: valores continuos en (0,1)
+    if arr.dtype.kind == "f" and arr.max() <= 1.0 and not np.allclose(arr, np.round(arr)):
+        return False
+    rounded = np.round(arr)
+    if not np.allclose(arr, rounded):
+        return False
+    vals = set(int(v) for v in np.unique(rounded))
+    return vals.issubset({0, 1, 2, 3}) and max(vals, default=0) <= 3
+
+
+def resumen_clasificacion(mapa_clases, confianza_por_clase=None):
+    """Lista de clases tumorales presentes ordenadas por área (px)."""
+    import numpy as np
+
+    if not _mapa_es_clases_multiclase(mapa_clases):
+        return []
+    arr = np.asarray(mapa_clases).astype(np.int64)
+    confianza_por_clase = confianza_por_clase or {}
+    resumen = []
+    for class_id, name in _CLASS_NAMES_ES.items():
+        pixels = int((arr == class_id).sum())
+        if pixels > 0:
+            item = {"id": class_id, "name": name, "pixels": pixels}
+            if class_id in confianza_por_clase:
+                item["confidence_pct"] = int(
+                    round(float(confianza_por_clase[class_id]) * 100)
+                )
+            resumen.append(item)
+    resumen.sort(key=lambda item: item["pixels"], reverse=True)
+    return resumen
+
+
+def _overlay_clases_rgba(mapa_clases):
+    """Construye un overlay RGBA a partir del mapa de clases."""
+    import numpy as np
+
+    arr = np.asarray(mapa_clases).astype(np.int64)
+    rgba = np.zeros(arr.shape + (4,), dtype=np.float32)
+    for class_id, color in _CLASS_OVERLAY_RGBA.items():
+        rgba[arr == class_id] = color
+    return rgba
+
+
+def guardar_figura_prediccion(
+    img,
+    mascara,
+    mascara_prob=None,
+    confianza=None,
+    confianza_clasificacion=None,
+    confianza_por_clase=None,
+):
+    """Genera PNG 1×3 (original | detección | clasificación) y devuelve la ruta."""
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        from matplotlib.patches import Patch
+        import numpy as np
     except ImportError as exc:
         raise RuntimeError(
             "No se pudo generar la imagen de resultado porque matplotlib no está instalado. "
             "La interfaz web puede abrir sin él, pero la ruta /predict requiere esta dependencia."
         ) from exc
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
 
     axes[0].imshow(img, cmap="gray")
     axes[0].set_title("Imagen original")
@@ -320,12 +397,60 @@ def guardar_figura_prediccion(img, mascara, mascara_prob=None, confianza=None):
 
     axes[1].imshow(img, cmap="gray")
     axes[1].imshow(mascara, cmap="Reds", alpha=0.5)
-    tumor_detectado = int(mascara.sum()) > 0
+    tumor_detectado = int(np.asarray(mascara).sum()) > 0
     titulo = "Detección: Positiva" if tumor_detectado else "Detección: Negativa"
     if confianza is not None:
         titulo = f"{titulo} ({int(round(confianza * 100))}%)"
     axes[1].set_title(titulo)
     axes[1].axis("off")
+
+    axes[2].imshow(img, cmap="gray")
+    if _mapa_es_clases_multiclase(mascara_prob):
+        axes[2].imshow(_overlay_clases_rgba(mascara_prob))
+        presentes = resumen_clasificacion(mascara_prob, confianza_por_clase)
+        if presentes:
+            if confianza_clasificacion is not None:
+                axes[2].set_title(
+                    f"Clasificación ({int(round(confianza_clasificacion * 100))}%)"
+                )
+            else:
+                axes[2].set_title("Clasificación")
+            legend_handles = []
+            for item in presentes:
+                meaning = _CLASS_MEANINGS_ES.get(item["id"], "")
+                label = f"{item['name']}: {meaning}" if meaning else item["name"]
+                if item.get("confidence_pct") is not None:
+                    label = f"{label} ({item['confidence_pct']}%)"
+                legend_handles.append(
+                    Patch(
+                        facecolor=_CLASS_OVERLAY_RGBA[item["id"]],
+                        edgecolor="none",
+                        label=label,
+                    )
+                )
+            legend = axes[2].legend(
+                handles=legend_handles,
+                loc="lower right",
+                fontsize=5.5,
+                framealpha=0.55,
+                borderpad=0.35,
+                labelspacing=0.25,
+                handlelength=1.0,
+                handletextpad=0.4,
+            )
+            if legend is not None:
+                legend.get_frame().set_linewidth(0.4)
+                for text in legend.get_texts():
+                    text.set_color("#333333")
+                    text.set_alpha(0.85)
+        else:
+            axes[2].set_title("Clasificación: sin tumor")
+    elif mascara_prob is not None:
+        axes[2].imshow(mascara_prob, cmap="hot", alpha=0.65)
+        axes[2].set_title("Mapa de probabilidad")
+    else:
+        axes[2].set_title("Clasificación no disponible")
+    axes[2].axis("off")
 
     plt.tight_layout()
 
@@ -390,6 +515,44 @@ def extraer_estadisticas_dicom(dcm_path, mascara):
 
 
 # ------------------------------------------------------------
+# Avisos del sistema (sin apilar duplicados)
+# ------------------------------------------------------------
+
+def flash_replace(message, category="message"):
+    """Publica un aviso reemplazando copias idénticas pendientes (no apilar)."""
+    pending = session.get("_flashes", [])
+    session["_flashes"] = [(cat, text) for cat, text in pending if text != message]
+    flash(message, category)
+
+
+def flash_counted(msg_one, category, prefix_many, suffix_many):
+    """Agrupa avisos repetidos del mismo tipo en un solo mensaje con conteo."""
+    pending = session.get("_flashes", [])
+    count = 1
+    kept = []
+    for cat, text in pending:
+        if text == msg_one:
+            count += 1
+            continue
+        if (
+            isinstance(text, str)
+            and text.startswith(prefix_many)
+            and text.endswith(suffix_many)
+        ):
+            try:
+                count += int(text[len(prefix_many) : -len(suffix_many)].strip())
+                continue
+            except ValueError:
+                pass
+        kept.append((cat, text))
+    session["_flashes"] = kept
+    if count == 1:
+        flash(msg_one, category)
+    else:
+        flash(f"{prefix_many}{count}{suffix_many}", category)
+
+
+# ------------------------------------------------------------
 # Rutas de Autenticación
 # ------------------------------------------------------------
 
@@ -404,7 +567,7 @@ def login():
         password = request.form.get("password", "").strip()
         
         if not username or not password:
-            flash("Por favor completa todos los campos.", "danger")
+            flash_replace("Por favor completa todos los campos.", "danger")
             return redirect(url_for("login"))
         
         user = User.query.filter_by(username=username).first()
@@ -425,7 +588,7 @@ def login():
             session.permanent = remember
             return redirect(url_for("main_menu"))
         else:
-            flash("Usuario o contraseña incorrectos.", "danger")
+            flash_replace("Usuario o contraseña incorrectos.", "danger")
     
     return render_template("login.html")
 
@@ -444,27 +607,27 @@ def register():
         
         # Validaciones
         if not username or not email or not password:
-            flash("Por favor completa todos los campos.", "danger")
+            flash_replace("Por favor completa todos los campos.", "danger")
             return redirect(url_for("register"))
         
         if len(username) < 3:
-            flash("El nombre de usuario debe tener al menos 3 caracteres.", "danger")
+            flash_replace("El nombre de usuario debe tener al menos 3 caracteres.", "danger")
             return redirect(url_for("register"))
         
         if password != password_confirm:
-            flash("Las contraseñas no coinciden.", "danger")
+            flash_replace("Las contraseñas no coinciden.", "danger")
             return redirect(url_for("register"))
         
         if len(password) < 6:
-            flash("La contraseña debe tener al menos 6 caracteres.", "danger")
+            flash_replace("La contraseña debe tener al menos 6 caracteres.", "danger")
             return redirect(url_for("register"))
         
         if User.query.filter_by(username=username).first():
-            flash("El nombre de usuario ya existe.", "danger")
+            flash_replace("El nombre de usuario ya existe.", "danger")
             return redirect(url_for("register"))
         
         if User.query.filter_by(email=email).first():
-            flash("El email ya está registrado.", "danger")
+            flash_replace("El email ya está registrado.", "danger")
             return redirect(url_for("register"))
         
         # Crear usuario
@@ -473,7 +636,7 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        flash("¡Cuenta creada exitosamente! Por favor inicia sesión.", "success")
+        flash_replace("¡Cuenta creada exitosamente! Por favor inicia sesión.", "success")
         return redirect(url_for("login"))
     
     return render_template("register.html")
@@ -484,7 +647,7 @@ def register():
 def logout():
     """Ruta de logout."""
     logout_user()
-    flash("Has cerrado sesión.", "info")
+    flash_replace("Has cerrado sesión.", "info")
     return redirect(url_for("login"))
 
 
@@ -527,7 +690,7 @@ def create_note():
         patient_id = request.form.get("patient_id", "").strip()
 
         if not content:
-            flash("El contenido es requerido.", "danger")
+            flash_replace("El contenido es requerido.", "danger")
             return redirect(request.referrer or url_for("notes"))
 
         if not title:
@@ -537,7 +700,7 @@ def create_note():
         db.session.add(note)
         db.session.commit()
 
-        flash("Nota creada exitosamente.", "success")
+        flash_replace("Nota creada exitosamente.", "success")
         if patient_id:
             return redirect(url_for("notes", patient_id=patient_id))
         return redirect(url_for("notes"))
@@ -554,7 +717,7 @@ def edit_note(note_id):
     
     # Verificar que el usuario sea el propietario
     if note.user_id != current_user.id:
-        flash("No tienes permiso para editar esta nota.", "danger")
+        flash_replace("No tienes permiso para editar esta nota.", "danger")
         return redirect(url_for("notes"))
     
     if request.method == "POST":
@@ -562,7 +725,7 @@ def edit_note(note_id):
         content = request.form.get("content", "").strip()
         
         if not title or not content:
-            flash("El título y contenido son requeridos.", "danger")
+            flash_replace("El título y contenido son requeridos.", "danger")
             return redirect(url_for("edit_note", note_id=note_id))
         
         note.title = title
@@ -570,7 +733,7 @@ def edit_note(note_id):
         note.updated_at = datetime.utcnow()
         db.session.commit()
         
-        flash("Nota actualizada exitosamente.", "success")
+        flash_replace("Nota actualizada exitosamente.", "success")
         return redirect(url_for("notes"))
     
     return render_template("edit_note.html", note=note)
@@ -584,13 +747,18 @@ def delete_note(note_id):
     
     # Verificar que el usuario sea el propietario
     if note.user_id != current_user.id:
-        flash("No tienes permiso para eliminar esta nota.", "danger")
+        flash_replace("No tienes permiso para eliminar esta nota.", "danger")
         return redirect(url_for("notes"))
     
     db.session.delete(note)
     db.session.commit()
     
-    flash("Nota eliminada exitosamente.", "success")
+    flash_counted(
+        "Nota eliminada exitosamente.",
+        "success",
+        "Se eliminaron ",
+        " notas correctamente.",
+    )
     return redirect(url_for("notes"))
 
 
@@ -622,21 +790,21 @@ def upload_profile_avatar():
     """Actualiza la foto de perfil del usuario autenticado."""
     file = request.files.get("avatar")
     if file is None or not file.filename:
-        flash("No se seleccionó ninguna imagen.", "danger")
+        flash_replace("No se seleccionó ninguna imagen.", "danger")
         return redirect(url_for("profile"))
 
     filename = secure_filename(file.filename)
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_AVATAR_EXTENSIONS:
-        flash("Formato no permitido. Usa JPG, JFIF, PNG, WEBP o GIF.", "danger")
+        flash_replace("Formato no permitido. Usa JPG, JFIF, PNG, WEBP o GIF.", "danger")
         return redirect(url_for("profile"))
 
     data = file.read()
     if not data:
-        flash("El archivo de imagen está vacío.", "danger")
+        flash_replace("El archivo de imagen está vacío.", "danger")
         return redirect(url_for("profile"))
     if len(data) > MAX_AVATAR_BYTES:
-        flash("La imagen supera el límite de 2 MB.", "danger")
+        flash_replace("La imagen supera el límite de 2 MB.", "danger")
         return redirect(url_for("profile"))
 
     current_user.profile_image = data
@@ -644,7 +812,7 @@ def upload_profile_avatar():
     current_user.profile_image_updated_at = datetime.utcnow()
     db.session.commit()
 
-    flash("Foto de perfil actualizada.", "success")
+    flash_replace("Foto de perfil actualizada.", "success")
     return redirect(url_for("profile"))
 
 
@@ -705,12 +873,12 @@ def save_patient_name(patient_id):
     patient_name = (request.form.get("patient_name") or "").strip()
     studies = PatientStudy.query.filter_by(user_id=current_user.id, patient_id=patient_id).all()
     if not studies:
-        flash("No se encontraron registros para ese paciente.", "warning")
+        flash_replace("No se encontraron registros para ese paciente.", "warning")
         return redirect(url_for("patient_history", q=patient_id))
 
     current_name = (studies[0].patient_name or "").strip()
     if not patient_name:
-        flash("Escribe un nombre antes de guardarlo.", "warning")
+        flash_replace("Escribe un nombre antes de guardarlo.", "warning")
         return redirect(url_for("patient_history", q=patient_id))
 
     for study in studies:
@@ -718,9 +886,9 @@ def save_patient_name(patient_id):
 
     db.session.commit()
     if current_name:
-        flash("Nombre del paciente actualizado correctamente.", "success")
+        flash_replace("Nombre del paciente actualizado correctamente.", "success")
     else:
-        flash("Nombre del paciente guardado correctamente.", "success")
+        flash_replace("Nombre del paciente guardado correctamente.", "success")
     return redirect(url_for("patient_history", q=patient_id))
 
 
@@ -731,7 +899,12 @@ def delete_patient_study(study_id):
     study = PatientStudy.query.filter_by(id=study_id, user_id=current_user.id).first_or_404()
     db.session.delete(study)
     db.session.commit()
-    flash("Registro del historial eliminado correctamente.", "success")
+    flash_counted(
+        "Registro del historial eliminado correctamente.",
+        "success",
+        "Se eliminaron ",
+        " registros del historial correctamente.",
+    )
     return redirect(url_for("patient_history"))
 
 
@@ -806,15 +979,33 @@ def predict():
         file.save(save_path)
 
         try:
-            img, mascara, mascara_prob, confianza = predecir_con_modelo(
-                model, model_type, save_path, device
-            )
+            (
+                img,
+                mascara,
+                mascara_prob,
+                confianza,
+                confianza_clasificacion,
+                confianza_por_clase,
+            ) = predecir_con_modelo(model, model_type, save_path, device)
             confidence_pct = int(round(float(confianza) * 100))
+            class_confidence_pct = (
+                int(round(float(confianza_clasificacion) * 100))
+                if confianza_clasificacion is not None
+                else None
+            )
             img_src = guardar_figura_prediccion(
-                img, mascara, mascara_prob, confianza=confianza
+                img,
+                mascara,
+                mascara_prob,
+                confianza=confianza,
+                confianza_clasificacion=confianza_clasificacion,
+                confianza_por_clase=confianza_por_clase,
             )
             area = int(mascara.sum())
             stats = extraer_estadisticas_dicom(save_path, mascara)
+            class_summary = resumen_clasificacion(
+                mascara_prob, confianza_por_clase=confianza_por_clase
+            )
 
             summary.num_images += 1
             if area > 0:
@@ -830,6 +1021,8 @@ def predict():
                     "side": stats["side"],
                     "quality_warning": stats["quality_warning"],
                     "confidence_pct": confidence_pct,
+                    "class_confidence_pct": class_confidence_pct,
+                    "class_summary": class_summary,
                 }
             )
         except Exception as e:
@@ -870,15 +1063,33 @@ def predict():
 
             for dcm_path in sorted(dcm_paths)[:20]:
                 try:
-                    img, mascara, mascara_prob, confianza = predecir_con_modelo(
-                        model, model_type, dcm_path, device
-                    )
+                    (
+                        img,
+                        mascara,
+                        mascara_prob,
+                        confianza,
+                        confianza_clasificacion,
+                        confianza_por_clase,
+                    ) = predecir_con_modelo(model, model_type, dcm_path, device)
                     confidence_pct = int(round(float(confianza) * 100))
+                    class_confidence_pct = (
+                        int(round(float(confianza_clasificacion) * 100))
+                        if confianza_clasificacion is not None
+                        else None
+                    )
                     img_src = guardar_figura_prediccion(
-                        img, mascara, mascara_prob, confianza=confianza
+                        img,
+                        mascara,
+                        mascara_prob,
+                        confianza=confianza,
+                        confianza_clasificacion=confianza_clasificacion,
+                        confianza_por_clase=confianza_por_clase,
                     )
                     area = int(mascara.sum())
                     stats = extraer_estadisticas_dicom(dcm_path, mascara)
+                    class_summary = resumen_clasificacion(
+                        mascara_prob, confianza_por_clase=confianza_por_clase
+                    )
 
                     summary.num_images += 1
                     if area > 0:
@@ -894,6 +1105,8 @@ def predict():
                             "side": stats["side"],
                             "quality_warning": stats["quality_warning"],
                             "confidence_pct": confidence_pct,
+                            "class_confidence_pct": class_confidence_pct,
+                            "class_summary": class_summary,
                         }
                     )
                 except Exception:

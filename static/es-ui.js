@@ -96,4 +96,19 @@
         }
       });
   }
+
+  // Toasts de avisos del sistema
+  document.querySelectorAll(".flash-toast").forEach(function (toast) {
+    if (toast.dataset.toastBound === "1") return;
+    toast.dataset.toastBound = "1";
+    var closeButton = toast.querySelector(".toast-close");
+    var hideToast = function () {
+      toast.classList.remove("show");
+      setTimeout(function () {
+        if (toast.parentNode) toast.remove();
+      }, 350);
+    };
+    if (closeButton) closeButton.addEventListener("click", hideToast);
+    setTimeout(hideToast, 4200);
+  });
 })();

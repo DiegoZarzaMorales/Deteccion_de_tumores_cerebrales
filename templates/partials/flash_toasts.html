@@ -1,0 +1,19 @@
+{# Avisos del sistema: toast flotante, deduplicados y auto-cerrables. #}
+<div class="flash-toast-container" id="flash-toast-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% set seen = [] %}
+      {% for category, message in messages %}
+        {% if message not in seen %}
+          {% if seen.append(message) %}{% endif %}
+          {% set toast_category = category if category in ['success', 'danger', 'warning', 'info'] else 'info' %}
+          <div class="flash-toast {{ toast_category }} show" role="alert" data-category="{{ toast_category }}">
+            <button type="button" class="toast-close" aria-label="Cerrar" title="Cerrar">×</button>
+            {{ message }}
+            <div class="toast-progress"></div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>

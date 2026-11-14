@@ -1,25 +1,31 @@
 # Confianza de la predicción
 
-La **confianza** resume qué tan seguro está el modelo de su decisión en la región relevante de la imagen. Se calcula en `ml/predecir.py` y se muestra en la web como porcentaje (`confianza × 100`).
+En este proyecto hay **dos confianzas** (y, si aplica, una por subclase). Se calculan en `ml/predecir.py` y se muestran en la web como porcentaje (`valor × 100`).
 
-Rango: valor en `[0, 1]` (0 %–100 %).
+Rango de cada valor: `[0, 1]` → **0 %–100 %**.
+
+| Métrica | Qué responde | Dónde se ve |
+|---------|--------------|-------------|
+| **Confianza de detección** | ¿Hay tumor o no? | Panel «Detección» y texto `Confianza detección` |
+| **Confianza de clasificación** | ¿Qué tan segura es la etiqueta NCR/ED/ET? | Panel «Clasificación (N%)» y texto `Confianza clasificación` |
+| **Confianza por clase** | Certeza media de cada subregión presente | Leyenda del 3.er panel y línea `Clasificación: NCR (…%) · …` |
 
 ---
 
 ## Idea general
 
-No se usa un único píxel ni el máximo de probabilidad. Se toma la **media** de la probabilidad asignada a la clase predicha:
+No se usa un único píxel ni el máximo. Se promedian probabilidades del **softmax** en la región relevante.
 
-- Si hay tumor → media solo sobre píxeles de tumor.
-- Si no hay tumor → media de la probabilidad de “fondo / sin tumor” en toda la imagen.
+- **Detección** mira la masa tumoral frente al fondo (`1 − p_0`).
+- **Clasificación** mira la probabilidad de la **clase elegida** en cada píxel tumoral (`p_ŷ`).
 
-Así, una detección positiva refleja la certeza dentro de la máscara, y una negativa refleja qué tan seguro está el modelo de que no hay tumor.
+Así pueden diferir: el modelo puede estar muy seguro de que hay tumor, pero menos seguro de si un píxel es ED o ET.
 
 ---
 
 ## Caso multiclasse (U-Net con 4 salidas)
 
-Salidas del modelo tras **softmax**:
+Salidas tras **softmax**:
 
 | Clase `c` | Significado |
 |-----------|-------------|
@@ -32,66 +38,74 @@ Salidas del modelo tras **softmax**:
 
 | Variable | Qué es |
 |----------|--------|
-| `logits` | Salida cruda del U-Net, forma `(1, C, H, W)` |
-| `probs` / \(p_c(x)\) | Softmax por píxel: \(p_c(x) = \mathrm{softmax}(\mathrm{logits})_c(x)\). Forma `(C, H, W)`. Suma 1 en cada píxel \(x\). |
-| `C` | Número de clases (aquí `4`) |
-| `H`, `W` | Alto y ancho del mapa de predicción (p. ej. 256×256) |
-| `clases` / \(\hat{y}(x)\) | Clase predicha: \(\hat{y}(x) = \arg\max_c\, p_c(x)\). Forma `(H, W)`. |
-| `T` | Región de tumor: todos los píxeles con \(\hat{y}(x) > 0\) (NCR ∪ ED ∪ ET) |
+| `probs` / \(p_c(x)\) | Softmax por píxel. Forma `(C, H, W)`. Suma 1 en cada \(x\). |
+| `clases` / \(\hat{y}(x)\) | \(\arg\max_c\, p_c(x)\) |
+| `T` | Píxeles con \(\hat{y}(x) > 0\) (NCR ∪ ED ∪ ET) |
 | \(\|T\|\) | Número de píxeles en `T` |
-| `confianza` | Escalar en `[0, 1]` que se reporta |
+| \(T_c\) | Píxeles con \(\hat{y}(x) = c\) |
 
-### Fórmulas
+### 1) Confianza de detección
 
-**Detección positiva** (\(\|T\| > 0\)):
+**Positiva** (\(\|T\| > 0\)):
 
 \[
-\mathrm{confianza} = \frac{1}{\|T\|} \sum_{x \in T} p_{\hat{y}(x)}(x)
+\mathrm{confianza\_deteccion} = \frac{1}{\|T\|} \sum_{x \in T} \bigl(1 - p_0(x)\bigr)
 \]
 
-Es decir: en cada píxel de tumor se toma la probabilidad de **la clase que el modelo eligió ahí**, y se promedia.
+Media de la probabilidad de “ser tumor” (cualquier subclase) en la máscara.
 
-**Detección negativa** (\(T\) vacío):
+**Negativa** (\(T\) vacío):
 
 \[
-\mathrm{confianza} = \frac{1}{HW} \sum_{x} p_0(x)
+\mathrm{confianza\_deteccion} = \frac{1}{HW} \sum_{x} p_0(x)
 \]
 
 Media de la probabilidad de fondo en toda la imagen.
 
+### 2) Confianza de clasificación
+
+Solo si hay tumor:
+
+\[
+\mathrm{confianza\_clasificacion} = \frac{1}{\|T\|} \sum_{x \in T} p_{\hat{y}(x)}(x)
+\]
+
+Media de la probabilidad de **la clase predicha** en cada píxel tumoral.
+
+Si no hay tumor → no se reporta (no hay subclase que puntuar).
+
+### 3) Confianza por clase
+
+Para cada clase tumoral presente \(c \in \{1,2,3\}\):
+
+\[
+\mathrm{confianza}_c = \frac{1}{\|T_c\|} \sum_{x \in T_c} p_c(x)
+\]
+
 ### Ejemplo rápido
 
-- Píxeles tumorales con \(p_{\hat{y}} \approx 0.85\) → confianza ≈ **85 %** (positiva).
-- Sin tumor y \(p_0 \approx 0.92\) en promedio → confianza ≈ **92 %** (negativa).
+- En `T`, \(1-p_0 \approx 0.96\) y \(p_{\hat{y}} \approx 0.78\)  
+  → detección **96 %**, clasificación **78 %**.
+- Solo ED y ET presentes, con medias 0.82 y 0.71  
+  → leyenda `ED (82%) · ET (71%)`.
 
 ---
 
 ## Caso binario (modelos con 1 salida)
 
-Salida tras **sigmoid**: mapa `prob_map` / \(p(x) \in [0,1]\) = probabilidad de tumor (WT).
+Solo hay **confianza de detección** (sigmoid WT). No hay clasificación NCR/ED/ET:
 
-La máscara binaria `mascara_binaria` sale del postproceso (componente principal). Sea \(T = \{x : \mathrm{máscara}(x) = 1\}\).
-
-**Positiva** (\(\|T\| > 0\)):
-
-\[
-\mathrm{confianza} = \frac{1}{\|T\|} \sum_{x \in T} p(x)
-\]
-
-**Negativa** (\(T\) vacío):
-
-\[
-\mathrm{confianza} = \frac{1}{HW} \sum_{x} \bigl(1 - p(x)\bigr)
-\]
-
-Media de la probabilidad de “no tumor”.
+**Positiva:** media de \(p(x)\) en la máscara.  
+**Negativa:** media de \(1-p(x)\) en toda la imagen.  
+`confianza_clasificacion` = `None`.
 
 ---
 
 ## Dónde se usa
 
-1. `predecir_imagen()` calcula `confianza` y la devuelve como 4.º valor.
-2. **Web** (`web/app.py`): título de la figura (`Detección: Positiva/Negativa (N%)`) y texto `Confianza: N%` junto al tamaño estimado.
+1. `predecir_imagen()` devuelve detección, clasificación y dict por clase.
+2. **Figura 1×3** (`web/app.py`): `%` en el título de Detección y de Clasificación; leyenda con `%` por clase.
+3. **Tarjeta web**: `Confianza detección`, `Confianza clasificación` y `Clasificación: NCR (…%) · …`.
 
 ---
 
@@ -99,4 +113,4 @@ Media de la probabilidad de “no tumor”.
 
 - No es exactitud clínica ni probabilidad calibrada de diagnóstico.
 - No mide el tamaño del tumor (eso es el área / mm²).
-- Depende del umbral/postproceso solo en el sentido de **qué píxeles entran en `T`**; el valor promediado es la probabilidad del modelo en esos píxeles (o el fondo si `T` está vacío).
+- Detección alta + clasificación más baja es posible y coherente (tumor sí, subtipo más ambiguo).
