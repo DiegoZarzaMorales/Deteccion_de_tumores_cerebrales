@@ -306,7 +306,6 @@
                     <th>Archivo</th>
                     <th>Imágenes</th>
                     <th>Con tumor</th>
-                    <th>Área total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -317,10 +316,9 @@
                       <td>{{ study.source_file }}</td>
                       <td>{{ study.num_images }}</td>
                       <td>{{ study.num_with_tumor }}</td>
-                      <td>{{ '%.1f' % study.total_area_mm2 }} mm²</td>
                     </tr>
                     <tr class="study-detail-row d-none">
-                      <td colspan="6">
+                      <td colspan="5">
                         <div class="study-detail-box">
                           <strong>Resultado del análisis:</strong><br>
                           {{ study.result_summary or 'No hay un resumen disponible para este estudio.' }}

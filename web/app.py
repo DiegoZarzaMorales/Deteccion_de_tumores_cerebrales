@@ -1145,8 +1145,7 @@ def predict():
             total_area_mm2=float(summary.total_area_mm2),
             result_summary=(
                 f"Imágenes analizadas: {summary.num_images}; "
-                f"Con tumor: {summary.num_with_tumor}; "
-                f"Área total estimada: {float(summary.total_area_mm2):.1f} mm²"
+                f"Con tumor: {summary.num_with_tumor}"
             ),
             result_images='|'.join(result_image_paths) if result_image_paths else None,
         )
