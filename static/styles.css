@@ -261,7 +261,9 @@ body.bg-body-tertiary {
 	border-radius: 0.75rem;
 	font-weight: 600;
 	line-height: 1.2;
-	transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+	/* Borde reservado: evita que active/show desplace el navbar */
+	box-shadow: inset 0 0 0 1px transparent;
+	transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .navbar-custom .navbar-nav .dropdown-toggle {
@@ -283,7 +285,7 @@ body.bg-body-tertiary {
 	color: #ffffff;
 	background: rgba(255, 255, 255, 0.12);
 	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
-	font-weight: 700;
+	font-weight: 600;
 }
 
 .navbar-custom .navbar-nav .dropdown-item {

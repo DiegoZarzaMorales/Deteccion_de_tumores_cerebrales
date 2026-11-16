@@ -54,6 +54,25 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 RESULTS_FOLDER = os.path.join(BASE_DIR, "static", "results")
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 MODEL_PATH = os.path.join(MODELS_DIR, "best_model.pth")
+DEFAULT_MODEL_WEIGHTS = "best_model.pth"
+# ---------------------------------------------------------------------------
+# Selector de pesos en /main (solo desarrollo / pruebas)
+# - Por defecto False: la UI muestra best_model.pth bloqueado y el servidor
+#   ignora cualquier model_weights enviado por el cliente.
+# - Developers: pon ALLOW_MODEL_WEIGHTS_PICKER = True aquí para poder elegir
+#   cualquier .pth del menú, O bien define en el entorno:
+#     ALLOW_MODEL_WEIGHTS_PICKER=1
+#   (también acepta true / yes). Si la variable de entorno está definida,
+#   tiene prioridad sobre el valor de abajo.
+# ---------------------------------------------------------------------------
+ALLOW_MODEL_WEIGHTS_PICKER = False
+_env_model_picker = os.environ.get("ALLOW_MODEL_WEIGHTS_PICKER")
+if _env_model_picker is not None:
+    ALLOW_MODEL_WEIGHTS_PICKER = _env_model_picker.strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 DATABASE_PATH = os.path.join(BASE_DIR, "tumores_cerebrales.db")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -329,7 +348,9 @@ def render_main_menu(
 ):
     """Renderiza el menú principal incluyendo el catálogo de pesos .pth."""
     available_models = listar_modelos_disponibles()
-    if selected_weights is None:
+    if not ALLOW_MODEL_WEIGHTS_PICKER:
+        selected_weights = DEFAULT_MODEL_WEIGHTS
+    elif selected_weights is None:
         _, selected_weights = resolver_ruta_modelo(None)
     return render_template(
         "main_menu.html",
@@ -339,6 +360,8 @@ def render_main_menu(
         selected_model=selected_model,
         available_models=available_models,
         selected_weights=selected_weights,
+        allow_model_weights_picker=ALLOW_MODEL_WEIGHTS_PICKER,
+        default_model_weights=DEFAULT_MODEL_WEIGHTS,
     )
 
 
@@ -1067,7 +1090,11 @@ def predict():
     model_type = (request.form.get("model_type") or "unet").strip().lower()
     if model_type not in {"unet", "yolo26"}:
         model_type = "unet"
-    selected_weights = (request.form.get("model_weights") or "").strip() or None
+    if ALLOW_MODEL_WEIGHTS_PICKER:
+        selected_weights = (request.form.get("model_weights") or "").strip() or None
+    else:
+        # UI bloqueada: ignorar cualquier model_weights del cliente.
+        selected_weights = DEFAULT_MODEL_WEIGHTS
 
     file = request.files.get("file")
     if file is None or file.filename == "":
