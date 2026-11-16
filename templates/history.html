@@ -105,12 +105,49 @@
       margin-top: 1rem;
     }
 
-    .history-search-card {
-      background: rgba(9, 19, 37, 0.72);
-      border: 1px solid rgba(107, 170, 255, 0.2);
-      border-radius: 16px;
-      box-shadow: 0 12px 28px rgba(10, 18, 32, 0.25);
-      backdrop-filter: blur(4px);
+    .history-search-form {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0;
+    }
+
+    .history-search-form .form-control {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .history-search-form .form-control.is-invalid {
+      border-color: #ef4444;
+    }
+
+    .history-search-form .btn {
+      flex: 0 0 auto;
+      min-width: 4.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .history-search-back-spacer {
+      flex: 0 0 auto;
+      width: 4.75rem;
+      height: 2.5rem;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .history-search-error {
+      display: none;
+      margin-top: 0.35rem;
+      font-size: 0.78rem;
+      color: #f87171;
+      line-height: 1.2;
+    }
+
+    .history-search-error.is-visible {
+      display: block;
     }
 
     .btn-solid-blue {
@@ -258,15 +295,35 @@
       <h1 class="h3 mb-0">Historial por paciente</h1>
     </div>
 
-    <div class="history-search-card p-3 p-md-4 mb-4">
-      <form method="GET" action="{{ url_for('patient_history') }}" class="row g-2 align-items-center">
-        <div class="col-12 col-md-9">
-          <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar por ID o nombre del paciente" title="Buscar por ID o nombre del paciente" aria-label="Buscar por ID o nombre del paciente" />
-        </div>
-        <div class="col-12 col-md-3 d-grid">
-          <button type="submit" class="btn btn-solid-blue" title="Buscar paciente">Buscar</button>
-        </div>
+    <div class="mb-4">
+      <form method="GET" action="{{ url_for('patient_history') }}" class="history-search-form" id="history-search-form" novalidate>
+        {% if search_query and not search_error %}
+          <a
+            href="{{ url_for('patient_history') }}"
+            class="btn btn-solid-blue"
+            title="Volver al historial completo"
+          >Volver</a>
+        {% else %}
+          <span class="history-search-back-spacer" aria-hidden="true"></span>
+        {% endif %}
+        <input
+          type="text"
+          name="q"
+          id="history-search-input"
+          value="{{ search_query or '' }}"
+          class="form-control{% if search_error %} is-invalid{% endif %}"
+          placeholder="Buscar por ID o nombre del paciente"
+          title="Buscar por ID o nombre del paciente"
+          aria-label="Buscar por ID o nombre del paciente"
+          aria-describedby="history-search-error"
+        />
+        <button type="submit" class="btn btn-solid-blue" title="Buscar paciente">Buscar</button>
       </form>
+      <div
+        id="history-search-error"
+        class="history-search-error{% if search_error %} is-visible{% endif %}"
+        role="alert"
+      >{{ search_error or '' }}</div>
     </div>
 
     {% if not grouped %}
@@ -394,6 +451,43 @@
       });
     });
 
+    (function () {
+      const searchForm = document.getElementById('history-search-form');
+      const searchInput = document.getElementById('history-search-input');
+      const searchError = document.getElementById('history-search-error');
+      const searchPattern = /^[\w\s\-.,:;/#()]+$/u;
+
+      function showSearchError(message) {
+        if (!searchError || !searchInput) return;
+        searchError.textContent = message;
+        searchError.classList.add('is-visible');
+        searchInput.classList.add('is-invalid');
+        searchInput.focus();
+      }
+
+      function clearSearchError() {
+        if (!searchError || !searchInput) return;
+        searchError.textContent = '';
+        searchError.classList.remove('is-visible');
+        searchInput.classList.remove('is-invalid');
+      }
+
+      if (searchForm && searchInput) {
+        searchInput.addEventListener('input', clearSearchError);
+        searchForm.addEventListener('submit', function (event) {
+          const value = (searchInput.value || '').trim();
+          if (!value) {
+            event.preventDefault();
+            showSearchError('El recuadro de búsqueda está vacío.');
+            return;
+          }
+          if (!searchPattern.test(value)) {
+            event.preventDefault();
+            showSearchError('El recuadro tiene caracteres no válidos.');
+          }
+        });
+      }
+    })();
   </script>
   <script src="{{ url_for('static', filename='es-ui.js') }}"></script>
   <script src="{{ url_for('static', filename='background-animation.js') }}"></script>

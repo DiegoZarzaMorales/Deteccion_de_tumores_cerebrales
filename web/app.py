@@ -779,8 +779,8 @@ def logout():
 # Rutas de Notas (Bloc de Notas)
 # ------------------------------------------------------------
 
-# Búsqueda de notas: letras, números, espacios y puntuación básica.
-_NOTES_SEARCH_RE = re.compile(r"^[\w\s\-.,:;/#()]+$", re.UNICODE)
+# Búsqueda (notas / historial): letras, números, espacios y puntuación básica.
+_SEARCH_QUERY_RE = re.compile(r"^[\w\s\-.,:;/#()]+$", re.UNICODE)
 
 
 @app.route("/notes", methods=["GET"])
@@ -797,7 +797,7 @@ def notes():
         if not search_query:
             search_error = "El recuadro de búsqueda está vacío."
             flash_replace(search_error, "warning")
-        elif not _NOTES_SEARCH_RE.fullmatch(search_query):
+        elif not _SEARCH_QUERY_RE.fullmatch(search_query):
             search_error = "El recuadro tiene caracteres no válidos."
             flash_replace(search_error, "warning")
             search_query = ""
@@ -1003,9 +1003,22 @@ def index():
 @login_required
 def patient_history():
     """Muestra el historial agrupado por paciente para el usuario autenticado."""
-    search_query = (request.args.get("q") or "").strip()
+    raw_q = request.args.get("q")
+    search_query = (raw_q or "").strip()
+    search_error = None
+
+    # Solo validar si el usuario envió el parámetro q (pulsó Buscar).
+    if raw_q is not None:
+        if not search_query:
+            search_error = "El recuadro de búsqueda está vacío."
+            flash_replace(search_error, "warning")
+        elif not _SEARCH_QUERY_RE.fullmatch(search_query):
+            search_error = "El recuadro tiene caracteres no válidos."
+            flash_replace(search_error, "warning")
+            search_query = ""
+
     studies_query = PatientStudy.query.filter_by(user_id=current_user.id)
-    if search_query:
+    if search_query and not search_error:
         studies_query = studies_query.filter(
             (PatientStudy.patient_id.contains(search_query))
             | (PatientStudy.patient_name.contains(search_query))
@@ -1026,7 +1039,12 @@ def patient_history():
             group["patient_name"] = study.patient_name
         group["studies"].append(study)
 
-    return render_template("history.html", grouped=list(grouped.values()), search_query=search_query)
+    return render_template(
+        "history.html",
+        grouped=list(grouped.values()),
+        search_query=search_query if not search_error else (raw_q or ""),
+        search_error=search_error,
+    )
 
 
 @app.route("/history/<string:patient_id>/name", methods=["POST"])
