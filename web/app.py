@@ -3,6 +3,7 @@
 # ============================================================
 
 import os
+import re
 import shutil
 import warnings
 import uuid
@@ -30,8 +31,16 @@ from flask import (
     session,
     send_from_directory,
     Response,
+    g,
 )
-from flask_login import LoginManager, login_required, login_user, logout_user, current_user
+from flask_login import (
+    LoginManager,
+    login_required,
+    login_user,
+    logout_user,
+    current_user,
+    user_loaded_from_cookie,
+)
 from werkzeug.utils import secure_filename
 
 import pydicom
@@ -98,9 +107,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# Sesión de navegador: no hay acceso persistente sin volver a escribir la contraseña.
+app.config['SESSION_PERMANENT'] = False
+app.permanent_session_lifetime = timedelta(hours=12)
+# Desactivar cookie remember de Flask-Login (nunca autenticar sin contraseña).
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(seconds=0)
+app.config['REMEMBER_COOKIE_REFRESH_EACH_REQUEST'] = False
 
-# Duración por defecto para sesiones "permanentes" (cuando el usuario marca "Recuérdame")
-app.permanent_session_lifetime = timedelta(days=30)
+# Solo guarda usuario/correo en el formulario de login; nunca la contraseña.
+REMEMBERED_LOGIN_COOKIE = "remembered_login"
+REMEMBERED_LOGIN_MAX_AGE = 60 * 60 * 24 * 30  # 30 días
 
 # Inicializar BD
 db.init_app(app)
@@ -110,10 +126,79 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
+login_manager.remember_cookie_duration = timedelta(seconds=0)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+@user_loaded_from_cookie.connect_via(app)
+def _block_remember_cookie_auth(sender, user):
+    """Marca intentos de auth solo por cookie remember (se rechazan en before_request)."""
+    g.reject_remember_auth = True
+
+
+@app.before_request
+def _enforce_password_only_sessions():
+    """No mantener sesiones permanentes ni autenticar sin contraseña."""
+    session.permanent = False
+    if getattr(g, "reject_remember_auth", False):
+        logout_user()
+        flash_replace("Debes iniciar sesión con tu contraseña.", "warning")
+        if request.endpoint not in (None, "login", "static", "register"):
+            return redirect(url_for("login"))
+
+
+@app.after_request
+def _strip_flask_login_remember_cookie(response):
+    """Elimina cookies remember antiguas de Flask-Login en cada respuesta."""
+    cookie_name = app.config.get("REMEMBER_COOKIE_NAME", "remember_token")
+    if request.cookies.get(cookie_name):
+        response.delete_cookie(
+            cookie_name,
+            path=app.config.get("REMEMBER_COOKIE_PATH", "/"),
+        )
+    return response
+
+
+def _find_user_by_login(identifier: str):
+    """Busca usuario por nombre de usuario o correo (sin distinguir mayúsculas en email)."""
+    identifier = (identifier or "").strip()
+    if not identifier:
+        return None
+    user = User.query.filter_by(username=identifier).first()
+    if user:
+        return user
+    return User.query.filter(db.func.lower(User.email) == identifier.lower()).first()
+
+
+def _apply_remembered_login_cookie(response, login_id, remember: bool):
+    """Guarda o borra solo el identificador de login (nunca la contraseña)."""
+    cookie_name = app.config.get("REMEMBER_COOKIE_NAME", "remember_token")
+    response.delete_cookie(
+        cookie_name,
+        path=app.config.get("REMEMBER_COOKIE_PATH", "/"),
+    )
+    if remember and login_id:
+        response.set_cookie(
+            REMEMBERED_LOGIN_COOKIE,
+            login_id,
+            max_age=REMEMBERED_LOGIN_MAX_AGE,
+            httponly=True,
+            samesite="Lax",
+            secure=bool(app.config.get("SESSION_COOKIE_SECURE")),
+        )
+    else:
+        response.set_cookie(
+            REMEMBERED_LOGIN_COOKIE,
+            "",
+            expires=0,
+            httponly=True,
+            samesite="Lax",
+            secure=bool(app.config.get("SESSION_COOKIE_SECURE")),
+        )
+    return response
 
 # Crear tablas si no existen
 with app.app_context():
@@ -558,39 +643,49 @@ def flash_counted(msg_one, category, prefix_many, suffix_many):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Ruta de login."""
+    """Ruta de login. 'Recuérdame' solo prellena usuario/correo; siempre exige contraseña."""
     if current_user.is_authenticated:
         return redirect(url_for("main_menu"))
-    
+
+    remembered_login = request.cookies.get(REMEMBERED_LOGIN_COOKIE, "") or ""
+
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        login_id = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
-        
-        if not username or not password:
+        remember = bool(request.form.get("remember"))
+
+        if not login_id or not password:
             flash_replace("Por favor completa todos los campos.", "danger")
             return redirect(url_for("login"))
-        
-        user = User.query.filter_by(username=username).first()
-        
+
+        user = _find_user_by_login(login_id)
+
         if user and user.check_password(password):
-            # Registrar el login en el historial
-            login_history = LoginHistory(
-                user_id=user.id,
-                ip_address=request.remote_addr,
-                user_agent=request.headers.get('User-Agent', '')[:255]
+            db.session.add(
+                LoginHistory(
+                    user_id=user.id,
+                    login_date=datetime.utcnow(),
+                    ip_address=request.remote_addr,
+                    user_agent=(request.headers.get("User-Agent") or "")[:255],
+                )
             )
-            db.session.add(login_history)
             db.session.commit()
-            
-            remember = bool(request.form.get("remember"))
-            login_user(user, remember=remember)
-            # Establecer session.permanent solo si el usuario eligió "Recuérdame".
-            session.permanent = remember
-            return redirect(url_for("main_menu"))
-        else:
-            flash_replace("Usuario o contraseña incorrectos.", "danger")
-    
-    return render_template("login.html")
+
+            # Nunca remember=True: la cookie de Flask-Login permitiría entrar sin contraseña.
+            login_user(user, remember=False)
+            session.permanent = False
+            response = redirect(url_for("main_menu"))
+            return _apply_remembered_login_cookie(response, login_id, remember)
+
+        flash_replace("Usuario o contraseña incorrectos.", "danger")
+        response = redirect(url_for("login"))
+        return _apply_remembered_login_cookie(response, login_id if remember else None, remember)
+
+    return render_template(
+        "login.html",
+        remembered_login=remembered_login,
+        remember_checked=bool(remembered_login),
+    )
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -645,21 +740,45 @@ def register():
 @app.route("/logout")
 @login_required
 def logout():
-    """Ruta de logout."""
+    """Ruta de logout. Conserva el usuario/correo recordado; nunca la contraseña."""
     logout_user()
     flash_replace("Has cerrado sesión.", "info")
-    return redirect(url_for("login"))
+    response = redirect(url_for("login"))
+    # Por si quedó una cookie remember antigua de Flask-Login.
+    response.delete_cookie(
+        app.config.get("REMEMBER_COOKIE_NAME", "remember_token"),
+        path=app.config.get("REMEMBER_COOKIE_PATH", "/"),
+    )
+    return response
 
 
 # ------------------------------------------------------------
 # Rutas de Notas (Bloc de Notas)
 # ------------------------------------------------------------
 
+# Búsqueda de notas: letras, números, espacios y puntuación básica.
+_NOTES_SEARCH_RE = re.compile(r"^[\w\s\-.,:;/#()]+$", re.UNICODE)
+
+
 @app.route("/notes", methods=["GET"])
 @login_required
 def notes():
-    """Vista principal de notas, opcionalmente filtrada por paciente."""
+    """Vista principal de notas, opcionalmente filtrada por paciente o búsqueda."""
     selected_patient_id = (request.args.get("patient_id") or "").strip()
+    raw_q = request.args.get("q")
+    search_query = (raw_q or "").strip()
+    search_error = None
+
+    # Solo validar si el usuario envió el parámetro q (pulsó Buscar).
+    if raw_q is not None:
+        if not search_query:
+            search_error = "El recuadro de búsqueda está vacío."
+            flash_replace(search_error, "warning")
+        elif not _NOTES_SEARCH_RE.fullmatch(search_query):
+            search_error = "El recuadro tiene caracteres no válidos."
+            flash_replace(search_error, "warning")
+            search_query = ""
+
     query = Note.query.filter_by(user_id=current_user.id)
     if selected_patient_id:
         query = query.filter(
@@ -672,11 +791,18 @@ def notes():
                 )
             )
         )
+    if search_query and not search_error:
+        like = f"%{search_query}%"
+        query = query.filter(
+            Note.title.ilike(like) | Note.patient_id.ilike(like)
+        )
     user_notes = query.order_by(Note.updated_at.desc()).all()
     return render_template(
         "notes.html",
         notes=user_notes,
         selected_patient_id=selected_patient_id,
+        search_query=search_query if not search_error else (raw_q or ""),
+        search_error=search_error,
     )
 
 
@@ -819,9 +945,23 @@ def upload_profile_avatar():
 @app.route("/profile", methods=["GET"])
 @login_required
 def profile():
-    """Ver perfil del usuario e historial de logins."""
-    login_history = LoginHistory.query.filter_by(user_id=current_user.id).order_by(LoginHistory.login_date.desc()).all()
-    return render_template("profile.html", login_history=login_history)
+    """Ver perfil del usuario e historial de logins.
+
+    login_history[0] = inicio de sesión actual (el más reciente).
+    login_history[1] = sesión anterior (el más reciente previo al actual).
+    Solo se crea un registro en LoginHistory tras un login con contraseña válida.
+    """
+    login_history = (
+        LoginHistory.query.filter_by(user_id=current_user.id)
+        .order_by(LoginHistory.login_date.desc())
+        .all()
+    )
+    previous_session = login_history[1] if len(login_history) > 1 else None
+    return render_template(
+        "profile.html",
+        login_history=login_history,
+        previous_session=previous_session,
+    )
 
 
 # ------------------------------------------------------------

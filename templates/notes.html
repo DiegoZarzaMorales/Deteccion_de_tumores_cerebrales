@@ -22,20 +22,60 @@
       z-index: -1;
       pointer-events: none;
     }
+    .note-slot {
+      position: relative;
+      margin-bottom: 20px;
+    }
     .note-card {
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: box-shadow 0.2s ease-in-out;
       cursor: pointer;
       border: none;
       border-radius: 10px;
-      margin-bottom: 20px;
+      background: var(--bs-card-bg, #212529);
     }
-    .note-card.is-expanded {
-      transform: translateY(-4px) scale(1.01);
-      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.34);
+    .note-card:hover:not(.is-overlay) {
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
     }
-    .note-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    .note-card.is-overlay {
+      position: fixed;
+      z-index: 1055;
+      margin: 0;
+      cursor: default;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+      transition:
+        top 0.28s ease-in-out,
+        left 0.28s ease-in-out,
+        width 0.28s ease-in-out,
+        height 0.28s ease-in-out,
+        border-radius 0.28s ease-in-out,
+        box-shadow 0.28s ease-in-out;
+    }
+    .note-card.is-overlay .card-body {
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .note-card.is-overlay .card-footer {
+      flex: 0 0 auto;
+    }
+    .note-overlay-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 1050;
+      background: rgba(2, 8, 20, 0.62);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease-in-out;
+    }
+    .note-overlay-scrim.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    body.note-overlay-open {
+      overflow: hidden;
     }
     .note-title {
       font-size: 1.25rem;
@@ -53,6 +93,15 @@
       text-overflow: ellipsis;
       color: #999;
       line-height: 1.5;
+      opacity: 1;
+      margin-top: 1rem;
+      transition: opacity 0.2s linear, max-height 0.2s linear, margin-top 0.2s linear;
+    }
+    .note-card.is-expanded .note-preview {
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+      pointer-events: none;
     }
     .note-full-content {
       max-height: 0;
@@ -60,17 +109,18 @@
       opacity: 0;
       margin-top: 0;
       padding-top: 0;
-      border-top: 1px solid rgba(100, 180, 255, 0.15);
+      border-top: 1px solid transparent;
       color: #e6eefb;
       line-height: 1.7;
       white-space: pre-wrap;
-      transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.35s ease, padding-top 0.35s ease;
+      transition: opacity 0.2s linear, max-height 0.2s linear, margin-top 0.2s linear, padding-top 0.2s linear, border-color 0.2s linear;
     }
     .note-card.is-expanded .note-full-content {
-      max-height: 1000px;
+      max-height: none;
       opacity: 1;
       margin-top: 1rem;
       padding-top: 1rem;
+      border-top-color: rgba(100, 180, 255, 0.15);
     }
     .note-toggle-hint {
       font-size: 0.8rem;
@@ -91,19 +141,102 @@
       color: white;
     }
     .notes-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 1rem;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(16rem, 28rem) minmax(0, 1fr);
+      align-items: center;
+      gap: 0.75rem 1rem;
     }
     .notes-header-text {
-      flex: 1 1 16rem;
       min-width: 0;
+      justify-self: start;
+    }
+    .notes-header-search {
+      width: 100%;
+      justify-self: center;
+    }
+    .notes-header-actions {
+      justify-self: end;
+    }
+    @media (max-width: 991.98px) {
+      .notes-header {
+        grid-template-columns: 1fr;
+      }
+      .notes-header-text,
+      .notes-header-search,
+      .notes-header-actions {
+        justify-self: stretch;
+      }
+      .notes-header-actions {
+        justify-content: flex-start;
+      }
+    }
+    .notes-search-form {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0;
+    }
+    .notes-search-form .form-control {
+      flex: 1 1 auto;
+      min-width: 9.5rem;
+      height: 2.15rem;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.875rem;
+      background: rgba(20, 30, 48, 0.85);
+      border-color: #334db3;
+      color: #e0e0e0;
+    }
+    .notes-search-form .form-control:focus {
+      border-color: #1976d2;
+      box-shadow: 0 0 0 0.15rem rgba(25, 118, 210, 0.25);
+      background: rgba(20, 30, 48, 0.95);
+      color: #e0e0e0;
+    }
+    .notes-search-form .form-control.is-invalid {
+      border-color: #ef4444;
+    }
+    .notes-search-form .btn {
+      flex: 0 0 auto;
+      height: 2.15rem;
+      min-width: 4.75rem;
+      padding: 0 0.75rem;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .notes-search-back-spacer {
+      flex: 0 0 auto;
+      width: 4.75rem;
+      height: 2.15rem;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .notes-search-error {
+      display: none;
+      margin-top: 0.35rem;
+      font-size: 0.78rem;
+      color: #f87171;
+      line-height: 1.2;
+    }
+    .notes-search-error.is-visible {
+      display: block;
+    }
+    .btn-solid-blue {
+      background: rgba(17, 37, 64, 0.9);
+      border: 1px solid rgba(17, 37, 64, 0.9);
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .btn-solid-blue:hover,
+    .btn-solid-blue:focus-visible {
+      color: #ffffff;
+      background: rgba(23, 49, 84, 0.96);
+      border-color: rgba(23, 49, 84, 0.96);
     }
     .notes-header-actions {
       display: flex;
-      flex: 0 0 auto;
       flex-wrap: nowrap;
       align-items: center;
       gap: 0.5rem;
@@ -269,6 +402,39 @@
         {% endif %}
         <p class="text-secondary mb-0">Bloc de notas personal para tus observaciones clínicas</p>
       </div>
+      <div class="notes-header-search">
+        <form method="GET" action="{{ url_for('notes') }}" class="notes-search-form" id="notes-search-form" novalidate>
+          {% if selected_patient_id %}
+            <input type="hidden" name="patient_id" value="{{ selected_patient_id }}" />
+          {% endif %}
+          {% if search_query and not search_error %}
+            <a
+              href="{{ url_for('notes') }}"
+              class="btn btn-solid-blue"
+              title="Volver a todas las notas"
+            >Volver</a>
+          {% else %}
+            <span class="notes-search-back-spacer" aria-hidden="true"></span>
+          {% endif %}
+          <input
+            type="text"
+            name="q"
+            id="notes-search-input"
+            value="{{ search_query or '' }}"
+            class="form-control{% if search_error %} is-invalid{% endif %}"
+            placeholder="Título o ID paciente"
+            title="Buscar por título o ID de paciente"
+            aria-label="Buscar por título o ID de paciente"
+            aria-describedby="notes-search-error"
+          />
+          <button type="submit" class="btn btn-solid-blue" title="Buscar notas">Buscar</button>
+        </form>
+        <div
+          id="notes-search-error"
+          class="notes-search-error{% if search_error %} is-visible{% endif %}"
+          role="alert"
+        >{{ search_error or '' }}</div>
+      </div>
       <div class="notes-header-actions">
         {% if selected_patient_id %}
           <a
@@ -292,44 +458,56 @@
       <div class="row">
         {% for note in notes %}
           <div class="col-md-6">
-            <div class="card note-card" tabindex="0" role="button" aria-expanded="false">
-              <div class="card-body">
-                {% if note.patient_id %}
-                  <div class="note-date mb-2">
-                    <span class="badge text-bg-primary">Paciente: {{ note.patient_id }}</span>
+            <div class="note-slot">
+              <div class="card note-card" tabindex="0" role="button" aria-expanded="false">
+                <div class="card-body">
+                  {% if note.patient_id %}
+                    <div class="note-date mb-2">
+                      <span class="badge text-bg-primary">Paciente: {{ note.patient_id }}</span>
+                    </div>
+                  {% endif %}
+                  <div class="note-title">{{ note.title }}</div>
+                  <div class="note-date">
+                    Actualizada: {{ note.updated_at.strftime('%d/%m/%Y %H:%M') }}
                   </div>
-                {% endif %}
-                <div class="note-title">{{ note.title }}</div>
-                <div class="note-date">
-                  Actualizada: {{ note.updated_at.strftime('%d/%m/%Y %H:%M') }}
+                  <div class="note-preview">
+                    {{ note.content[:150] }}{% if note.content|length > 150 %}...{% endif %}
+                  </div>
+                  <div class="note-full-content">
+                    {{ note.content }}
+                  </div>
+                  <div class="note-toggle-hint">Haz clic en la nota para leer el contenido completo</div>
                 </div>
-                <div class="note-preview mt-3">
-                  {{ note.content[:150] }}{% if note.content|length > 150 %}...{% endif %}
-                </div>
-                <div class="note-full-content">
-                  {{ note.content }}
-                </div>
-                <div class="note-toggle-hint">Haz clic en la nota para leer el contenido completo</div>
-              </div>
-              <div class="card-footer bg-transparent border-top">
-                <div class="note-actions" role="group" aria-label="Acciones de nota">
-                  <a href="{{ url_for('edit_note', note_id=note.id) }}" class="btn btn-sm btn-outline-primary note-action-link">
-                    Editar
-                  </a>
-                  <form method="POST" action="{{ url_for('delete_note', note_id=note.id) }}" class="inline-form note-action-form">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar esta nota?');">
-                      Eliminar
-                    </button>
-                  </form>
+                <div class="card-footer bg-transparent border-top">
+                  <div class="note-actions" role="group" aria-label="Acciones de nota">
+                    <a href="{{ url_for('edit_note', note_id=note.id) }}" class="btn btn-sm btn-outline-primary note-action-link">
+                      Editar
+                    </a>
+                    <form method="POST" action="{{ url_for('delete_note', note_id=note.id) }}" class="inline-form note-action-form">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar esta nota?');">
+                        Eliminar
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         {% endfor %}
       </div>
+      <div class="note-overlay-scrim" id="note-overlay-scrim" hidden></div>
     {% else %}
         <div class="empty-state">
-        {% if selected_patient_id %}
+        {% if search_query %}
+          <h3>Sin resultados para «{{ search_query }}»</h3>
+          <p class="text-secondary mb-4">Prueba con otro título o ID de paciente.</p>
+          <a
+            href="{{ url_for('notes', patient_id=selected_patient_id) if selected_patient_id else url_for('notes') }}"
+            class="btn btn-outline-light btn-lg"
+          >
+            Limpiar búsqueda
+          </a>
+        {% elif selected_patient_id %}
           <h3>No hay notas para {{ selected_patient_id }}</h3>
           <p class="text-secondary mb-4">Crea una nota vinculada a este paciente.</p>
           <a
@@ -351,33 +529,194 @@
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
   <script>
-    document.querySelectorAll('.note-card').forEach((card) => {
-      const toggleCard = () => {
-        const isExpanded = card.classList.toggle('is-expanded');
-        card.setAttribute('aria-expanded', String(isExpanded));
-      };
+    (function () {
+      const scrim = document.getElementById('note-overlay-scrim');
+      let activeCard = null;
+      let originRect = null;
+      let closing = false;
 
-      card.addEventListener('click', (event) => {
-        if (event.target.closest('.note-actions')) {
+      function overlayTarget() {
+        // Misma caja que editar/crear nota: container px-3/md-4/xl-5 + col-12/xl-11, alto casi fullscreen.
+        const gutterX = window.innerWidth >= 1200 ? 48 : window.innerWidth >= 768 ? 24 : 16;
+        const gutterY = 12;
+        const availableWidth = window.innerWidth - gutterX * 2;
+        const width = window.innerWidth >= 1200 ? availableWidth * (11 / 12) : availableWidth;
+        const height = Math.max(320, window.innerHeight - gutterY * 2);
+        return {
+          top: gutterY,
+          left: (window.innerWidth - width) / 2,
+          width: width,
+          height: height,
+        };
+      }
+
+      function applyRect(card, rect) {
+        card.style.top = rect.top + 'px';
+        card.style.left = rect.left + 'px';
+        card.style.width = rect.width + 'px';
+        card.style.height = rect.height + 'px';
+      }
+
+      function clearInlineBox(card) {
+        card.style.top = '';
+        card.style.left = '';
+        card.style.width = '';
+        card.style.height = '';
+        card.style.borderRadius = '';
+      }
+
+      function openCard(card) {
+        if (activeCard && activeCard !== card) {
+          closeCard(true);
+        }
+        if (activeCard === card || closing) return;
+
+        const slot = card.closest('.note-slot');
+        const rect = card.getBoundingClientRect();
+        originRect = {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        };
+        slot.style.height = rect.height + 'px';
+
+        scrim.hidden = false;
+        requestAnimationFrame(function () {
+          scrim.classList.add('is-visible');
+        });
+        document.body.classList.add('note-overlay-open');
+
+        card.classList.add('is-overlay');
+        applyRect(card, originRect);
+        card.offsetHeight; // force reflow before expanding
+
+        const target = overlayTarget();
+        requestAnimationFrame(function () {
+          applyRect(card, target);
+          card.style.borderRadius = '10px';
+          card.classList.add('is-expanded');
+          card.setAttribute('aria-expanded', 'true');
+        });
+
+        activeCard = card;
+      }
+
+      function closeCard(immediate) {
+        if (!activeCard || closing) return;
+        const card = activeCard;
+        const slot = card.closest('.note-slot');
+        closing = true;
+
+        card.classList.remove('is-expanded');
+        card.setAttribute('aria-expanded', 'false');
+        scrim.classList.remove('is-visible');
+
+        let finished = false;
+        const finish = function () {
+          if (finished) return;
+          finished = true;
+          card.removeEventListener('transitionend', onEnd);
+          card.classList.remove('is-overlay');
+          clearInlineBox(card);
+          if (slot) slot.style.height = '';
+          scrim.hidden = true;
+          document.body.classList.remove('note-overlay-open');
+          activeCard = null;
+          originRect = null;
+          closing = false;
+        };
+
+        const onEnd = function (event) {
+          if (event.target !== card || event.propertyName !== 'width') return;
+          finish();
+        };
+
+        if (immediate || !originRect) {
+          finish();
           return;
         }
-        toggleCard();
+
+        applyRect(card, originRect);
+        card.style.borderRadius = '10px';
+        card.addEventListener('transitionend', onEnd);
+        window.setTimeout(finish, 350);
+      }
+
+      document.querySelectorAll('.note-card').forEach(function (card) {
+        card.addEventListener('click', function (event) {
+          if (event.target.closest('.note-actions')) return;
+          if (card.classList.contains('is-expanded')) {
+            closeCard(false);
+          } else {
+            openCard(card);
+          }
+        });
+
+        card.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            if (card.classList.contains('is-expanded')) {
+              closeCard(false);
+            } else {
+              openCard(card);
+            }
+          }
+        });
       });
 
-      card.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          toggleCard();
-        }
-      });
-    });
+      if (scrim) {
+        scrim.addEventListener('click', function () {
+          closeCard(false);
+        });
+      }
 
-    document.querySelectorAll('.note-action-link, .note-action-form').forEach((element) => {
-      element.addEventListener('click', (event) => {
-        event.stopPropagation();
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeCard(false);
       });
-    });
 
+      document.querySelectorAll('.note-action-link, .note-action-form').forEach(function (element) {
+        element.addEventListener('click', function (event) {
+          event.stopPropagation();
+        });
+      });
+
+      const searchForm = document.getElementById('notes-search-form');
+      const searchInput = document.getElementById('notes-search-input');
+      const searchError = document.getElementById('notes-search-error');
+      const searchPattern = /^[\w\s\-.,:;/#()]+$/u;
+
+      function showSearchError(message) {
+        if (!searchError || !searchInput) return;
+        searchError.textContent = message;
+        searchError.classList.add('is-visible');
+        searchInput.classList.add('is-invalid');
+        searchInput.focus();
+      }
+
+      function clearSearchError() {
+        if (!searchError || !searchInput) return;
+        searchError.textContent = '';
+        searchError.classList.remove('is-visible');
+        searchInput.classList.remove('is-invalid');
+      }
+
+      if (searchForm && searchInput) {
+        searchInput.addEventListener('input', clearSearchError);
+        searchForm.addEventListener('submit', function (event) {
+          const value = (searchInput.value || '').trim();
+          if (!value) {
+            event.preventDefault();
+            showSearchError('El recuadro de búsqueda está vacío.');
+            return;
+          }
+          if (!searchPattern.test(value)) {
+            event.preventDefault();
+            showSearchError('El recuadro tiene caracteres no válidos.');
+          }
+        });
+      }
+    })();
   </script>
   <script src="{{ url_for('static', filename='es-ui.js') }}"></script>
   <script src="{{ url_for('static', filename='background-animation.js') }}"></script>

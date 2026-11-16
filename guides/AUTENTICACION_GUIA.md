@@ -102,7 +102,7 @@ La aplicación se ejecutará en `http://localhost:5000`
 
 #### **Iniciar Sesión:**
 1. Ingresa tu usuario y contraseña
-2. Marca "Recuérdame" si deseas mantener la sesión
+2. Marca "Recuérdame" si deseas que se recuerde solo tu usuario/correo (siempre deberás escribir la contraseña)
 3. ¡Bienvenido al análisis de tumores!
 
 #### **Analizar Imágenes:**

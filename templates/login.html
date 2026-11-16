@@ -157,15 +157,17 @@
         <p class="text-white-50 mb-0 mt-2">Iniciar Sesión</p>
       </div>
       <div class="card-body p-4">
-        <form method="POST">
+        <form method="POST" autocomplete="on">
           <div class="mb-3">
-            <label class="form-label" for="username">Nombre de usuario</label>
+            <label class="form-label" for="username">Usuario o correo</label>
             <input 
               class="form-control" 
               id="username" 
               name="username" 
               type="text" 
-              placeholder="Ingresa tu usuario"
+              placeholder="Usuario o correo"
+              value="{{ remembered_login or '' }}"
+              autocomplete="username"
               required
             />
           </div>
@@ -178,6 +180,7 @@
               name="password" 
               type="password" 
               placeholder="Ingresa tu contraseña"
+              autocomplete="current-password"
               required
             />
           </div>
@@ -188,10 +191,12 @@
               id="remember" 
               name="remember" 
               type="checkbox"
+              {% if remember_checked %}checked{% endif %}
             />
             <label class="form-check-label" for="remember">
               Recuérdame
             </label>
+            <div class="form-text">Solo guarda el usuario o correo. Siempre deberás escribir la contraseña.</div>
           </div>
 
           <button class="btn btn-login w-100 btn-lg" type="submit">

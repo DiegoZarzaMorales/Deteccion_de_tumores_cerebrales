@@ -90,6 +90,20 @@ body.bg-body-tertiary {
 	box-shadow: 0 6px 14px rgba(17, 37, 64, 0.24);
 }
 
+/* Cerrar sesión en /profile: relleno en reposo, outline al pasar el mouse */
+.btn-logout-profile {
+	--bs-btn-color: #fff;
+	--bs-btn-bg: var(--bs-danger);
+	--bs-btn-border-color: var(--bs-danger);
+	--bs-btn-hover-color: var(--bs-danger);
+	--bs-btn-hover-bg: transparent;
+	--bs-btn-hover-border-color: var(--bs-danger);
+	--bs-btn-focus-shadow-rgb: var(--bs-danger-rgb);
+	--bs-btn-active-color: var(--bs-danger);
+	--bs-btn-active-bg: transparent;
+	--bs-btn-active-border-color: var(--bs-danger);
+}
+
 /* Selector de archivo en español (oculta el control nativo en inglés) */
 .es-file-input {
 	display: flex;
